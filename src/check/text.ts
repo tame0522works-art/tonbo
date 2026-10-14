@@ -1,9 +1,11 @@
 // pdf.js でページごとの文字を取り出し、ノンブルの検査に渡す形（PDF の座標、pt）にする
 import type { PDFDocumentProxy } from 'pdfjs-dist'
+import { Progress, type OnProgress } from '../progress.ts'
 import type { TextItem } from './nombre.ts'
 
-export async function extractTexts(doc: PDFDocumentProxy): Promise<TextItem[][]> {
+export async function extractTexts(doc: PDFDocumentProxy, onProgress?: OnProgress): Promise<TextItem[][]> {
   const out: TextItem[][] = []
+  const progress = new Progress(doc.numPages, onProgress)
   for (let n = 1; n <= doc.numPages; n++) {
     const page = await doc.getPage(n)
     const content = await page.getTextContent()
@@ -17,6 +19,7 @@ export async function extractTexts(doc: PDFDocumentProxy): Promise<TextItem[][]>
     }
     out.push(items)
     page.cleanup()
+    await progress.step(n)
   }
   return out
 }

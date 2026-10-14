@@ -6,6 +6,8 @@ export type BuildOptions = {
   compressed?: boolean
   /** xref の位置を全部ずらし、壊れたファイルを再現する */
   breakXref?: boolean
+  /** trailer（stream 形式なら XRef の辞書）に足す項目。例: '/Encrypt 9 0 R' */
+  trailerExtra?: string
 }
 
 type Obj = { body: string; stream?: Uint8Array }
@@ -76,7 +78,7 @@ export class PdfBuilder {
       rows.forEach((r, i) => predicted.push(2, ...r.map((v, j) => (v - (i > 0 ? rows[i - 1][j] : 0)) & 0xff)))
       const xrefAt = length
       writeObj(xrefNum, {
-        body: `<< /Type /XRef /Size ${size} /W [1 4 2] /Root ${root} 0 R /Filter /FlateDecode /DecodeParms << /Predictor 12 /Columns 7 >> >>`,
+        body: `<< /Type /XRef /Size ${size} /W [1 4 2] /Root ${root} 0 R ${opts.trailerExtra ?? ''} /Filter /FlateDecode /DecodeParms << /Predictor 12 /Columns 7 >> >>`,
         stream: deflateSync(Buffer.from(predicted)),
       })
       push(`startxref\n${xrefAt}\n%%EOF\n`)
@@ -86,7 +88,7 @@ export class PdfBuilder {
       const shift = opts.breakXref ? 37 : 0
       let table = `xref\n0 ${size}\n0000000000 65535 f \n`
       for (let n = 1; n < size; n++) table += `${String(offsets.get(n)! + shift).padStart(10, '0')} 00000 n \n`
-      push(table + `trailer\n<< /Size ${size} /Root ${root} 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`)
+      push(table + `trailer\n<< /Size ${size} /Root ${root} 0 R ${opts.trailerExtra ?? ''} >>\nstartxref\n${xrefAt}\n%%EOF\n`)
     }
     return Buffer.concat(parts)
   }

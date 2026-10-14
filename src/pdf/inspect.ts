@@ -6,6 +6,7 @@
  * - 図形や文字の塗りに RGB が使われたか
  * 描画命令は cm（座標変換）・q/Q（状態の保存と復元）・Do（画像や部品の配置）など、必要な演算子だけを解釈する。
  */
+import { Progress, type OnProgress } from '../progress.ts'
 import { PdfDocument, UnsupportedFilter } from './document.ts'
 import {
   displayName,
@@ -69,11 +70,14 @@ export type DocumentFacts = {
 
 export const PT_PER_MM = 72 / 25.4
 
-export async function inspectPdf(bytes: Uint8Array): Promise<DocumentFacts> {
+/** onProgress には、読み終えたページ数と全体のページ数（ページツリーの /Count）を渡す */
+export async function inspectPdf(bytes: Uint8Array, onProgress?: OnProgress): Promise<DocumentFacts> {
   const doc = await PdfDocument.open(bytes)
   const root = (await doc.getDict(doc.trailer.get('Root')))!
   const pages: PageFacts[] = []
-  await walkPages(doc, await doc.getDict(root.get('Pages')), {}, pages, new Set())
+  const tree = await doc.getDict(root.get('Pages'))
+  const progress = new Progress(Number(await doc.get(tree?.get('Count'))) || 0, onProgress)
+  await walkPages(doc, tree, {}, pages, new Set(), progress)
   return { version: doc.version, repaired: doc.repaired, pdfx: await pdfxOf(doc, root), pages }
 }
 
@@ -93,7 +97,7 @@ async function pdfxOf(doc: PdfDocument, root: PdfDict): Promise<string> {
 /** ページツリーで親から子へ受け継がれる値 */
 type Inherited = { MediaBox?: PdfValue; CropBox?: PdfValue; Resources?: PdfValue; Rotate?: PdfValue }
 
-async function walkPages(doc: PdfDocument, node: PdfDict | undefined, inh: Inherited, out: PageFacts[], seen: Set<PdfDict>) {
+async function walkPages(doc: PdfDocument, node: PdfDict | undefined, inh: Inherited, out: PageFacts[], seen: Set<PdfDict>, progress: Progress) {
   if (!node || seen.has(node)) return
   seen.add(node)
   const next: Inherited = {
@@ -104,10 +108,11 @@ async function walkPages(doc: PdfDocument, node: PdfDict | undefined, inh: Inher
   }
   const kids = await doc.get(node.get('Kids'))
   if (isName(node.get('Type'), 'Pages') || (Array.isArray(kids) && !node.has('Contents'))) {
-    if (Array.isArray(kids)) for (const k of kids) await walkPages(doc, await doc.getDict(k), next, out, seen)
+    if (Array.isArray(kids)) for (const k of kids) await walkPages(doc, await doc.getDict(k), next, out, seen, progress)
     return
   }
   out.push(await inspectPage(doc, node, next, out.length + 1))
+  await progress.step(out.length)
 }
 
 async function boxOf(doc: PdfDocument, v: PdfValue | undefined, unit: number): Promise<Box | undefined> {

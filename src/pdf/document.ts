@@ -40,6 +40,9 @@ export class PdfDocument {
     if (!latin1(bytes.subarray(0, 1024)).includes('%PDF-')) throw new PdfSyntaxError('PDF ファイルではない')
     try {
       const { xref, trailer } = await readXrefChain(bytes)
+      // 保護（暗号化）された PDF は、文字列と stream の中身が暗号になっていて読めない。
+      // 読み進めると的外れな結果になるので、ここで止めて利用者に伝える
+      if (trailer.has('Encrypt')) throw new PdfEncryptedError()
       // xref の位置がずれていると、別のオブジェクトを読んでしまっても気づけない。
       // 各位置が「その番号 世代 obj」で始まっているかを先に全部確かめる（数字を2つ読むだけなので軽い）
       for (const [num, e] of xref) {
@@ -51,8 +54,10 @@ export class PdfDocument {
       const root = await doc.getDict(trailer.get('Root'))
       if (!root || !isName(root.get('Type'), 'Catalog')) throw new PdfSyntaxError('Root が Catalog でない')
       return doc
-    } catch {
+    } catch (e) {
+      if (e instanceof PdfEncryptedError) throw e
       const { xref, trailer } = await scanObjects(bytes)
+      if (trailer.has('Encrypt')) throw new PdfEncryptedError()
       return new PdfDocument(bytes, xref, trailer, true)
     }
   }
@@ -153,6 +158,12 @@ export class PdfDocument {
     const r = await this.get(v)
     if (r === null) return []
     return Array.isArray(r) ? r : [r]
+  }
+}
+
+export class PdfEncryptedError extends Error {
+  constructor() {
+    super('保護（暗号化）のかかった PDF')
   }
 }
 
@@ -329,6 +340,7 @@ async function scanObjects(bytes: Uint8Array): Promise<{ xref: Map<number, XrefE
       const v = lx.next()
       if (!isDict(v)) continue
       if (isName(v.get('Type'), 'Catalog') && !trailer.has('Root')) trailer.set('Root', { kind: 'ref', num, gen: 0 })
+      if (isName(v.get('Type'), 'XRef') && v.has('Encrypt')) trailer.set('Encrypt', v.get('Encrypt')!)
       if (isName(v.get('Type'), 'ObjStm') && lx.expectWord('stream')) {
         for (const [objNum, index] of await objStmNumbers(bytes, lx.pos, v)) {
           if (!xref.has(objNum)) xref.set(objNum, { type: 'compressed', streamNum: num, index })

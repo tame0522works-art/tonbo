@@ -1,6 +1,6 @@
 // 自前の PDF 読み取りが、字句・xref の各形式・追記・壊れたファイルを正しく扱えるかを確かめる
 import assert from 'node:assert/strict'
-import { PdfDocument } from '../src/pdf/document.ts'
+import { PdfDocument, PdfEncryptedError } from '../src/pdf/document.ts'
 import { displayName, isDict, isName, isRef, isStream, isString, latin1, Lexer, type PdfDict } from '../src/pdf/objects.ts'
 import { appendUpdate, flate, PdfBuilder } from './pdf-builder.ts'
 
@@ -117,6 +117,14 @@ for (const [label, opts] of [
   const st = await doc.get(r!.get('X'))
   assert.ok(isStream(st))
   assert.equal(latin1(st.raw), 'hello world')
+}
+{
+  // 保護（暗号化）のかかった PDF は読み進めず、専用のエラーにする（表形式・stream 形式・壊れた xref の読み直し）
+  for (const opts of [{}, { compressed: true }, { breakXref: true }]) {
+    const { b, root } = sample()
+    const enc = b.add('<< /Filter /Standard /V 2 /R 3 /Length 128 /P -4 /O <00> /U <00> >>')
+    await assert.rejects(PdfDocument.open(b.build(root, { ...opts, trailerExtra: `/Encrypt ${enc} 0 R` })), PdfEncryptedError, JSON.stringify(opts))
+  }
 }
 await assert.rejects(PdfDocument.open(Buffer.from('not a pdf')))
 

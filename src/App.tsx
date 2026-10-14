@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { PagePreview } from './PagePreview.tsx'
 import { openImagePreview, openPdfPreview, type Preview } from './preview.ts'
 import type { TextItem } from './check/nombre.ts'
 import { checkDocument, computeSpine, type CheckOptions, type Finding } from './check/rules.ts'
 import { extractTexts } from './check/text.ts'
+import { PdfEncryptedError } from './pdf/document.ts'
 import { boxHeightMm, boxWidthMm, inspectPdf, type DocumentFacts, type PageFacts } from './pdf/inspect.ts'
 import { checkRasters, sortByName, type RasterFile } from './raster/facts.ts'
 import { inspectRaster } from './raster/inspect.ts'
@@ -173,6 +174,10 @@ function Result({ l, settings }: { l: Loaded; settings: Settings }) {
 export default function App() {
   const [loaded, setLoaded] = useState<Loaded[]>([])
   const [dragging, setDragging] = useState(false)
+  /** 読み込み中の進み具合（読み込んでいないときは null） */
+  const [progress, setProgress] = useState<string | null>(null)
+  /** 読み込み中に別のファイルが入れられたら、前の読み込みの結果は捨てる。何回目の読み込みかを数えて見分ける */
+  const openCount = useRef(0)
   const [settings, setSettings] = useState<Settings>({
     printerId: PRINTERS[0].id,
     formatId: 'A5',
@@ -195,13 +200,26 @@ export default function App() {
 
   async function open(files: FileList | InputFile[] | null) {
     if (!files) return
-    // 前に開いていたファイルの表示用の資源（worker 側の文書や画像）を手放す
+    const list = Array.from(files)
+    if (list.length === 0) return
+    const me = ++openCount.current
+    const stale = () => me !== openCount.current
+    // 前に開いていたファイルの表示用の資源（worker 側の文書や画像）を手放し、結果も消す（読み込み中に古い結果を見せない）
     for (const l of loaded) if (l.kind !== 'error') l.preview.close()
+    setLoaded([])
     const results: Loaded[] = []
     const images: (RasterFile & { bytes: Uint8Array; type: string })[] = []
-    const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
-    for (const f of Array.from(files)) {
+    const message = (e: unknown) =>
+      e instanceof PdfEncryptedError
+        ? '保護（暗号化）のかかった PDF は、中身を読めないため確かめられません。書き出しの設定で、パスワードや印刷・編集の制限（セキュリティ）を外してから入れてください。'
+        : e instanceof Error
+          ? e.message
+          : String(e)
+    for (const [i, f] of list.entries()) {
+      const head = list.length > 1 ? `${f.name}（${i + 1} / ${list.length} ファイル目）` : f.name
+      setProgress(`${head}: 読み込んでいます`)
       const bytes = new Uint8Array(await f.arrayBuffer())
+      if (stale()) return
       if (isRaster(bytes)) {
         try {
           images.push({ name: f.name, meta: inspectRaster(bytes), bytes, type: f.type || '' })
@@ -215,12 +233,20 @@ export default function App() {
         continue
       }
       try {
-        const facts = await inspectPdf(bytes)
+        const facts = await inspectPdf(bytes, (done, total) => !stale() && setProgress(`${head}: 構造を読んでいます（${done} / ${total} ページ）`))
+        if (stale()) return
         const preview = openPdfPreview(bytes)
         // ノンブルの検査に使う文字。取り出せなければノンブルだけ検査しない
-        const texts = await preview.pdf!.then(extractTexts).catch(() => undefined)
+        const texts = await preview
+          .pdf!.then((doc) => extractTexts(doc, (done, total) => !stale() && setProgress(`${head}: ノンブルを探すため文字を取り出しています（${done} / ${total} ページ）`)))
+          .catch(() => undefined)
+        if (stale()) {
+          preview.close()
+          return
+        }
         results.push({ kind: 'pdf', fileName: f.name, facts, preview, texts })
       } catch (e) {
+        if (stale()) return
         results.push({ kind: 'error', fileName: f.name, error: message(e) })
       }
     }
@@ -230,6 +256,7 @@ export default function App() {
       results.unshift({ kind: 'images', fileName: name, files: sorted.map(({ name: n, meta }) => ({ name: n, meta })), preview: openImagePreview(sorted) })
     }
     setLoaded(results)
+    setProgress(null)
   }
 
   function openSample(part: 'body' | 'cover') {
@@ -391,6 +418,12 @@ export default function App() {
         </button>
       </p>
 
+      {progress && (
+        <p className="progress" role="status" aria-live="polite">
+          <span className="spinner" aria-hidden="true" />
+          {progress}
+        </p>
+      )}
       {loaded.map((l) => (
         <Result key={l.fileName} l={l} settings={settings} />
       ))}
