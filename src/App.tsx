@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react'
+import type { PDFDocumentProxy } from 'pdfjs-dist'
+import { PagePreview } from './PagePreview.tsx'
+import { openForPreview, type Preview } from './preview.ts'
 import { checkDocument, type CheckOptions, type Finding } from './check/rules.ts'
 import { boxHeightMm, boxWidthMm, inspectPdf, type DocumentFacts, type PageFacts } from './pdf/inspect.ts'
 import sampleDataUrl from './samples/sample-a5-ng.pdf?inline'
 import { PRINTERS } from './specs/index.ts'
 
-type Loaded = { fileName: string; facts: DocumentFacts } | { fileName: string; error: string }
+type Loaded = { fileName: string; facts: DocumentFacts; preview: Preview } | { fileName: string; error: string }
 type Settings = Omit<CheckOptions, 'printer'> & { printerId: string }
 
 const LEVEL_LABEL = { error: '要修正', warn: '注意', info: '参考' } as const
@@ -24,8 +27,18 @@ function pageRanges(pages: number[]): string {
   return out.join(', ')
 }
 
-function FindingItem({ f }: { f: Finding }) {
+/** 一度に開くページの数。多いと描画に時間がかかるので、残りは数だけ伝える */
+const PREVIEW_PAGES = 4
+
+function FindingItem({ f, pdf }: { f: Finding; pdf: Promise<PDFDocumentProxy> }) {
   const sources = [...new Map(f.sources.map((s) => [s.url, s])).values()]
+  const [open, setOpen] = useState(false)
+  // 赤枠のあるページを先に見せる
+  const shown = useMemo(() => {
+    const withRegions = [...new Set(f.regions.map((r) => r.page))]
+    const rest = f.pages.filter((p) => !withRegions.includes(p))
+    return [...withRegions, ...rest].slice(0, PREVIEW_PAGES).map((page) => ({ page, marks: f.regions.filter((r) => r.page === page) }))
+  }, [f])
   return (
     <li className={`finding ${f.level}`}>
       <span className="level">{LEVEL_LABEL[f.level]}</span>
@@ -33,6 +46,19 @@ function FindingItem({ f }: { f: Finding }) {
         <strong>{f.title}</strong>
         {f.pages.length > 0 && <span className="pages">ページ {pageRanges(f.pages)}</span>}
         {f.detail && <p>{f.detail}</p>}
+        {f.pages.length > 0 && (
+          <button type="button" className="show-pages" aria-expanded={open} onClick={() => setOpen(!open)}>
+            {open ? 'ページを閉じる' : 'ページを見る'}
+          </button>
+        )}
+        {open && (
+          <div className="previews">
+            {shown.map((s) => (
+              <PagePreview key={s.page} pdf={pdf} page={s.page} marks={s.marks} level={f.level} />
+            ))}
+            {f.pages.length > PREVIEW_PAGES && <p className="meta">ほか {f.pages.length - PREVIEW_PAGES} ページ</p>}
+          </div>
+        )}
         {sources.length > 0 && (
           <p className="sources">
             出典:{' '}
@@ -90,7 +116,7 @@ function Result({ l, settings }: { l: Loaded; settings: Settings }) {
       </p>
       <ul className="findings">
         {findings.map((f) => (
-          <FindingItem key={f.code} f={f} />
+          <FindingItem key={f.code} f={f} pdf={l.preview.pdf} />
         ))}
       </ul>
       <details>
@@ -135,10 +161,14 @@ export default function App() {
 
   async function open(files: FileList | { name: string; arrayBuffer: () => Promise<ArrayBuffer> }[] | null) {
     if (!files) return
+    // 前に開いていたファイルの表示用の資源（worker 側の文書）を手放す
+    for (const l of loaded) if ('preview' in l) l.preview.close()
     const results: Loaded[] = []
     for (const f of Array.from(files)) {
       try {
-        results.push({ fileName: f.name, facts: await inspectPdf(new Uint8Array(await f.arrayBuffer())) })
+        const bytes = new Uint8Array(await f.arrayBuffer())
+        const facts = await inspectPdf(bytes)
+        results.push({ fileName: f.name, facts, preview: openForPreview(bytes) })
       } catch (e) {
         results.push({ fileName: f.name, error: e instanceof Error ? e.message : String(e) })
       }

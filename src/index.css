@@ -83,7 +83,7 @@ td {
   text-align: left;
   white-space: nowrap;
 }
-.error {
+p.error {
   color: var(--accent);
 }
 footer {
@@ -198,4 +198,68 @@ summary {
   color: var(--fg);
   font: inherit;
   cursor: pointer;
+}
+.show-pages {
+  margin-top: 8px;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+}
+.preview {
+  margin: 0;
+  max-width: 100%;
+}
+.preview .sheet {
+  position: relative;
+  max-width: 100%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
+}
+.preview canvas,
+.preview svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+.preview rect {
+  fill: color-mix(in srgb, var(--mark) 12%, transparent);
+  stroke: var(--mark);
+  stroke-width: 3;
+}
+.preview .tag rect {
+  fill: var(--mark);
+  stroke: none;
+}
+.preview .tag text {
+  fill: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.preview {
+  --mark: #d6332a;
+}
+.preview figcaption {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.preview-failed {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  color: #66707a;
+  font-size: 0.85rem;
 }

@@ -18,6 +18,8 @@ export type Finding = {
   title: string
   detail: string
   pages: number[]
+  /** ページ上の該当箇所（PDF の座標、pt）。赤枠で示す */
+  regions: { page: number; box: Box; label?: string }[]
   sources: { label: string; url: string }[]
 }
 
@@ -39,11 +41,14 @@ export function checkDocument(facts: DocumentFacts, opts: CheckOptions): Finding
   if (!format) throw new Error(`${printer.name} に判型 ${opts.formatId} がない`)
   const out = new Map<string, Finding>()
   const cite = (v: { src: string[] }) => v.src.map((k) => ({ label: printer.name, url: printer.sources[k] }))
-  const add = (f: Omit<Finding, 'pages'>, page?: number) => {
-    const found = out.get(f.code)
-    if (found) {
-      if (page !== undefined && !found.pages.includes(page)) found.pages.push(page)
-    } else out.set(f.code, { ...f, pages: page === undefined ? [] : [page] })
+  const add: Add = (f, page, box, label) => {
+    let found = out.get(f.code)
+    if (!found) {
+      found = { ...f, pages: [], regions: [] }
+      out.set(f.code, found)
+    }
+    if (page !== undefined && !found.pages.includes(page)) found.pages.push(page)
+    if (page !== undefined && box) found.regions.push({ page, box, label })
   }
 
   if (facts.repaired) {
@@ -81,7 +86,7 @@ export function checkDocument(facts: DocumentFacts, opts: CheckOptions): Finding
 }
 
 type Cite = (v: { src: string[] }) => Finding['sources']
-type Add = (f: Omit<Finding, 'pages'>, page?: number) => void
+type Add = (f: Omit<Finding, 'pages' | 'regions'>, page?: number, box?: Box, label?: string) => void
 
 /** 仕様データの注記をつなげる（注記は文末の「。」なしで書いてある） */
 const note = (v: { note?: string }) => (v.note ? v.note.replace(/。?$/, '。') : '')
@@ -113,6 +118,7 @@ function checkSize(p: PageFacts, format: Format, printer: PrinterSpec, cite: Cit
           sources: cite(format),
         },
         p.number,
+        p.trimBox,
       )
       return
     }
@@ -128,6 +134,7 @@ function checkSize(p: PageFacts, format: Format, printer: PrinterSpec, cite: Cit
           sources: cite(printer.bleedMm),
         },
         p.number,
+        p.trimBox,
       )
     }
     return
@@ -143,6 +150,7 @@ function checkSize(p: PageFacts, format: Format, printer: PrinterSpec, cite: Cit
         sources: cite(printer.bleedMm),
       },
       p.number,
+      p.cropBox,
     )
   } else if (near(mw, format.w + bleed * 2) && near(mh, format.h + bleed * 2)) {
     // 塗り足し込みの大きさちょうど。仕上がりは中央にあるとみなせる
@@ -167,6 +175,7 @@ function checkSize(p: PageFacts, format: Format, printer: PrinterSpec, cite: Cit
         sources: cite(format),
       },
       p.number,
+      p.cropBox,
     )
   }
 }
@@ -202,12 +211,14 @@ function checkImages(p: PageFacts, opts: CheckOptions, cite: Cite, add: Add) {
         code: `dpi-${kind}${below ? '-low' : ''}`,
         title: `${kindLabel}の画像の解像度が推奨（${recommended}dpi）より低いです`,
         detail:
-          `印刷される大きさでの解像度が足りない画像があります（最も低いもので約 ${Math.round(dpi)}dpi）。` +
+          '印刷される大きさでの解像度が足りない画像があります（画像ごとの値は赤枠に添えて示します）。' +
           (acceptable !== undefined ? `${opts.printer.name}は ${acceptable}dpi 以上なら印刷はできるとしています。` : '') +
           note(spec),
         sources: cite(spec),
       },
       p.number,
+      img.bounds,
+      `約 ${Math.round(dpi)}dpi`,
     )
   }
 }
@@ -246,8 +257,8 @@ function checkFonts(p: PageFacts, printer: PrinterSpec, cite: Cite, add: Add) {
 }
 
 function checkPaint(p: PageFacts, opts: CheckOptions, cite: Cite, add: Add) {
-  const rgbImages = p.images.some((i) => i.color === 'rgb' && visible(i.bounds, p.cropBox))
-  const rgb = rgbImages || p.rgbPaintOps > 0
+  const rgbBoxes = p.images.filter((i) => i.color === 'rgb' && visible(i.bounds, p.cropBox)).map((i) => i.bounds)
+  const rgb = rgbBoxes.length > 0 || p.rgbPaintOps > 0
   const part = opts.part === 'cover' ? 'cover' : 'body'
   const policy = opts.printer.rgb[part]
   if (rgb) {
@@ -296,6 +307,11 @@ function checkPaint(p: PageFacts, opts: CheckOptions, cite: Cite, add: Add) {
         p.number,
       )
     }
+  }
+  if (rgb) {
+    // 指摘はどれか1つだけ出ているので、その指摘に RGB 画像の位置を足す（文字や図形の色は位置を追っていない）
+    const code = part === 'body' && opts.ink === 'mono' ? 'rgb-in-mono' : `rgb-${policy.value}`
+    for (const b of rgbBoxes) add({ level: 'info', code, title: '', detail: '', sources: [] }, p.number, b, 'RGB の画像')
   }
   if (p.spotColors.length) {
     add(

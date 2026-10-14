@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react'
 import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { defineConfig, type Plugin } from 'vite'
 
 /**
@@ -34,6 +35,21 @@ function contentSecurityPolicy(): Plugin {
   }
 }
 
+/**
+ * pdf.js の CMap（.bcmap）を base64 の文字列を返す JS モジュールにする。
+ * 公開版は CSP で fetch を禁止しているので、CMap はスクリプトとして読み込ませる（src/preview.ts）
+ */
+function bcmapAsModule(): Plugin {
+  return {
+    name: 'tonbo-bcmap',
+    enforce: 'pre',
+    load(id) {
+      if (!id.endsWith('.bcmap')) return
+      return `export default ${JSON.stringify(readFileSync(id).toString('base64'))}`
+    },
+  }
+}
+
 /** 画面に出す版の名前（ビルドした日時〈日本時間〉と、コミットの短い ID） */
 function buildVersion(): string {
   const jst = new Date(Date.now() + 9 * 60 * 60_000)
@@ -54,5 +70,5 @@ function buildVersion(): string {
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
   define: { __APP_VERSION__: JSON.stringify(buildVersion()) },
-  plugins: [contentSecurityPolicy(), react()],
+  plugins: [bcmapAsModule(), contentSecurityPolicy(), react()],
 })
