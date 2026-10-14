@@ -44,6 +44,9 @@ assert.deepEqual(codes(doc([page(1, { trimBox: box(182, 257, 3) }), page(2)])), 
 const shinsho = [page(1, { mediaBox: box(113, 181), cropBox: box(113, 181) }), page(2, { mediaBox: box(113, 181), cropBox: box(113, 181) })]
 assert.deepEqual(codes(doc(shinsho), opts({ printer: spec('popls'), formatId: 'shinsho', binding: 'saddle' })), ['page-unit'])
 assert.deepEqual(codes(doc(shinsho), opts({ formatId: 'shinsho' })), ['page-size'])
+// 日光企画の新書は 105×175mm（テンプレートから読み取り）
+const nikkoShinsho = [1, 2, 3, 4].map((n) => page(n, { mediaBox: box(111, 181), cropBox: box(111, 181) }))
+assert.deepEqual(codes(doc(nikkoShinsho), opts({ printer: spec('nikko'), formatId: 'shinsho' })), [])
 
 // --- 解像度 ---
 {
