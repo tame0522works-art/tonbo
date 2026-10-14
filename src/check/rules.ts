@@ -31,6 +31,11 @@ export type CheckOptions = {
   /** 本文の刷り色。表紙は常にカラーとして扱う */
   ink: 'mono' | 'color'
   binding: 'perfect' | 'saddle'
+  /** 表紙のとき: 本文の用紙（仕様の spine.papers の id）と本文のページ数。背幅の計算に使う */
+  paperId?: string
+  bodyPages?: number
+  /** 表紙のとき: 利用者が入れた背幅（mm）。計算値より優先する（早見表しかない印刷所や、印刷所に確かめた値） */
+  spineMm?: number
 }
 
 /** 寸法の比較で許す差（mm）。作成ソフトの丸めで 0.1mm 前後ずれるのはよくある */
@@ -68,6 +73,7 @@ export function checkDocument(facts: DocumentFacts, opts: CheckOptions, texts?: 
 
   for (const p of facts.pages) {
     if (opts.part === 'body') checkSize(p, format, printer, cite, add)
+    else if (p.number === 1) checkCoverSize(p, format, opts, cite, add)
     checkImages(p, opts, cite, add)
     checkFonts(p, printer, cite, add)
     checkPaint(p, opts, cite, add)
@@ -479,5 +485,129 @@ function checkNombres(pages: PageFacts[], texts: TextItem[][], format: Format, p
       detail: `${printer.name}は奇数ページから始めることを求めています。${note(rule)}`,
       sources,
     })
+  }
+}
+
+/** 背幅（mm）を印刷所の式で求める。式がない（早見表だけの）印刷所や、用紙・ページ数が未入力なら undefined */
+export function computeSpine(printer: PrinterSpec, paperId: string | undefined, bodyPages: number | undefined): number | undefined {
+  const r = printer.spine.value
+  const paper = r.papers.find((x) => x.id === paperId)
+  if (!paper || !bodyPages || bodyPages <= 0) return undefined
+  const pages = r.includesCover ? bodyPages + 4 : bodyPages
+  if (r.method === 'linear') return (r.perPage ?? 1) * pages * paper.value + (r.constant ?? 0)
+  if (r.method === 'divide') return pages / paper.value
+  return undefined
+}
+
+/** 表紙の仕上がりの中で、背にあたる帯（表4 の右隣）。赤枠で背の位置を示すのに使う */
+function spineBox(trim: Box, pageWidthMm: number, spineMm: number): Box {
+  const x0 = trim.x0 + pageWidthMm * PT_PER_MM
+  return { x0, y0: trim.y0, x1: x0 + Math.max(spineMm, 0.5) * PT_PER_MM, y1: trim.y1 }
+}
+
+/** 背幅の差をどこまで許すか（mm）。印刷所の計算でも小数の丸め方は書かれていないため */
+const SPINE_OK_MM = 0.5
+const SPINE_WARN_MM = 1.5
+
+/**
+ * 表紙（表4・背・表1 を並べた1枚）の大きさを確かめる。
+ * 仕上がりは 幅 = 判型の幅 × 2 + 背幅、高さ = 判型の高さ。塗り足しはその外側に付く
+ */
+function checkCoverSize(p: PageFacts, format: Format, opts: CheckOptions, cite: Cite, add: Add) {
+  const { printer } = opts
+  const spineRule = printer.spine
+  const spine = opts.spineMm ?? computeSpine(printer, opts.paperId, opts.bodyPages)
+  if (spine === undefined) {
+    add({
+      level: 'info',
+      code: 'cover-spine-unknown',
+      title: '背幅がわからないため、表紙の大きさは確かめていません',
+      detail:
+        spineRule.value.method === 'table'
+          ? `${printer.name}は背幅の式を公開しておらず、早見表で決めます。早見表の値を「背幅」に入れると確かめられます。${note(spineRule)}`
+          : '本文の用紙とページ数を選ぶと、背幅を計算して表紙の大きさを確かめます。',
+      sources: cite(spineRule),
+    })
+    return
+  }
+  const bleed = printer.bleedMm.value
+  const wantW = format.w * 2 + spine
+  const spineText = `${opts.spineMm !== undefined ? '入力した' : '計算した'}背幅 ${mm1(spine)}mm`
+  const wantH = format.h
+  const [mw, mh] = size(p.cropBox, p.rotate)
+  const [tw, th] = p.trimBox ? size(p.trimBox, p.rotate) : [undefined, undefined]
+  // 仕上がりの幅を、TrimBox → 塗り足し込み → 塗り足しなし → トンボ付き の順に読み取る
+  let trimW: number
+  let bleedOk = true
+  if (tw !== undefined && th !== undefined) {
+    trimW = tw
+    if (!near(th, wantH)) return coverMismatch(p, `仕上がり（TrimBox）の高さが ${mm1(th)}mm で、${format.label}の ${wantH}mm と違います。`)
+  } else if (near(mh, wantH + bleed * 2)) {
+    trimW = mw - bleed * 2
+  } else if (near(mh, wantH)) {
+    trimW = mw
+    bleedOk = false
+  } else if (mh - wantH > bleed * 2 && mh - wantH <= 40) {
+    // トンボの余白は天地左右で同じ幅なので、天地の余白から仕上がりの幅を逆算する
+    // （幅で判断すると、背幅がずれた原稿をトンボ付きと見分けられない）
+    trimW = mw - (mh - wantH)
+    add(
+      {
+        level: 'info',
+        code: 'with-marks',
+        title: 'トンボ付きの大きさとみなしました',
+        detail: `用紙が ${mm1(mw)}×${mm1(mh)}mm です。仕上がりは中央にあるとみなし、天地と同じ幅の余白が左右にもあるとして幅を求めています。`,
+        sources: [],
+      },
+      p.number,
+    )
+  } else {
+    return coverMismatch(p, `用紙の高さが ${mm1(mh)}mm で、${format.label}の表紙（仕上がり ${wantH}mm、塗り足し込み ${wantH + bleed * 2}mm）に合いません。`)
+  }
+
+  const actualSpine = trimW - format.w * 2
+  const diff = actualSpine - spine
+  if (Math.abs(diff) > SPINE_OK_MM) {
+    add(
+      {
+        level: Math.abs(diff) > SPINE_WARN_MM ? 'error' : 'warn',
+        code: 'cover-spine',
+        title: `表紙の背幅が ${mm1(Math.abs(diff))}mm ${diff > 0 ? '広い' : '狭い'}です`,
+        detail:
+          `表紙の仕上がりの幅は ${mm1(trimW)}mm で、背幅にすると ${mm1(actualSpine)}mm です。${spineText}なら、仕上がりの幅は ${format.w}×2＋${mm1(spine)} = ${mm1(wantW)}mm になります。` +
+          `背幅がずれると、背の文字や絵が表1・表4に回り込みます。${note(spineRule)}`,
+        sources: cite(spineRule),
+      },
+      p.number,
+      spineBox(pageTrim(p, { ...format, w: trimW }), format.w, actualSpine),
+      `背 ${mm1(actualSpine)}mm`,
+    )
+  }
+  if (!bleedOk) {
+    add(
+      {
+        level: 'warn',
+        code: 'no-bleed',
+        title: '塗り足しがありません',
+        detail: `表紙の用紙が仕上がりと同じ大きさです。天地左右に ${bleed}mm ずつ足して ${mm1(trimW + bleed * 2)}×${wantH + bleed * 2}mm で作ってください。${note(printer.bleedMm)}`,
+        sources: cite(printer.bleedMm),
+      },
+      p.number,
+      p.cropBox,
+    )
+  }
+
+  function coverMismatch(page: PageFacts, detail: string) {
+    add(
+      {
+        level: 'error',
+        code: 'cover-size',
+        title: `表紙の大きさが ${format.label}に合いません`,
+        detail: `${detail}表紙は表4・背・表1 を横に並べた1枚で、仕上がりは ${mm1(wantW)}×${wantH}mm（${spineText}）、塗り足し込みは ${mm1(wantW + bleed * 2)}×${wantH + bleed * 2}mm です。`,
+        sources: cite(format),
+      },
+      page.number,
+      page.cropBox,
+    )
   }
 }

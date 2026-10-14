@@ -6,7 +6,8 @@
     "T": "https://www.nikko-pc.com/site/home-hd-2/home-tombo/",
     "Q": "https://www.nikko-pc.com/site/home-hd-2/home-qa/",
     "N": "https://www.nikko-pc.com/site/home-hd-2/home-ng/",
-    "K": "https://www.nikko-pc.com/site/home-hd-2/kihon/"
+    "K": "https://www.nikko-pc.com/site/home-hd-2/kihon/",
+    "S": "https://www.nikko-pc.com/site/home-hd-2/home-sehaba/"
   },
   "formats": [
     {
@@ -150,5 +151,54 @@
       "N"
     ],
     "note": "全ページに必須。仕上がりサイズの内側に入れ、奇数ページから始める。漢数字は不可"
+  },
+  "spine": {
+    "value": {
+      "method": "linear",
+      "perPage": 1,
+      "constant": 0,
+      "includesCover": true,
+      "papers": [
+        {
+          "id": "jouhou70",
+          "label": "上質70kg・淡クリームキンマリ70・コート110",
+          "value": 0.05
+        },
+        {
+          "id": "bidan-light",
+          "label": "HS美弾紙ライト・マットコート110",
+          "value": 0.06
+        },
+        {
+          "id": "jouhou90",
+          "label": "上質90kg・淡クリーム90",
+          "value": 0.063
+        },
+        {
+          "id": "bidan",
+          "label": "美弾紙",
+          "value": 0.07
+        },
+        {
+          "id": "highbulky",
+          "label": "ハイバルギー",
+          "value": 0.072
+        },
+        {
+          "id": "kraft",
+          "label": "クラフト",
+          "value": 0.073
+        },
+        {
+          "id": "jouhou110",
+          "label": "上質110kg",
+          "value": 0.075
+        }
+      ]
+    },
+    "src": [
+      "S"
+    ],
+    "note": "表紙込みのページ数 × 本文用紙の厚み（mm）。カバーは背幅 +1mm"
   }
 }

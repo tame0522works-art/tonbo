@@ -50,6 +50,22 @@ export type NombreRule = {
   minHeightMm?: number
 }
 
+/**
+ * 背幅の求め方。印刷所ごとに式が違うので、次のどれかで表す（pages は数え方 includesCover に従ったページ数）
+ * - linear … perPage × pages × 用紙の値 + constant（日光企画は用紙の厚み、緑陽社は紙係数）
+ * - divide … pages ÷ 用紙の値（ポプルス）
+ * - table  … 式が公開されておらず早見表だけ（しまや出版）。計算せず、利用者に早見表の値を入れてもらう
+ */
+export type SpineRule = {
+  method: 'linear' | 'divide' | 'table'
+  perPage?: number
+  constant?: number
+  includesCover: boolean
+  papers: { id: string; label: string; value: number }[]
+  /** 早見表の URL（table のとき） */
+  tableUrl?: string
+}
+
 export type PrinterSpec = {
   id: string
   name: string
@@ -68,4 +84,5 @@ export type PrinterSpec = {
   fontEmbedExempt?: Sourced<string[]>
   pageUnit: { perfect?: Sourced<PageUnit>; saddle?: Sourced<PageUnit> }
   nombre: Sourced<NombreRule>
+  spine: Sourced<SpineRule>
 }

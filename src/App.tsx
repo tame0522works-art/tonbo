@@ -3,10 +3,11 @@ import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { PagePreview } from './PagePreview.tsx'
 import { openForPreview, type Preview } from './preview.ts'
 import type { TextItem } from './check/nombre.ts'
-import { checkDocument, type CheckOptions, type Finding } from './check/rules.ts'
+import { checkDocument, computeSpine, type CheckOptions, type Finding } from './check/rules.ts'
 import { extractTexts } from './check/text.ts'
 import { boxHeightMm, boxWidthMm, inspectPdf, type DocumentFacts, type PageFacts } from './pdf/inspect.ts'
-import sampleDataUrl from './samples/sample-a5-ng.pdf?inline'
+import sampleCover from './samples/sample-a5-cover-ng.pdf?inline'
+import sampleBody from './samples/sample-a5-ng.pdf?inline'
 import { PRINTERS } from './specs/index.ts'
 
 type Loaded = { fileName: string; facts: DocumentFacts; preview: Preview; texts?: TextItem[][] } | { fileName: string; error: string }
@@ -151,14 +152,24 @@ function Result({ l, settings }: { l: Loaded; settings: Settings }) {
 export default function App() {
   const [loaded, setLoaded] = useState<Loaded[]>([])
   const [dragging, setDragging] = useState(false)
-  const [settings, setSettings] = useState<Settings>({ printerId: PRINTERS[0].id, formatId: 'A5', part: 'body', ink: 'mono', binding: 'perfect' })
+  const [settings, setSettings] = useState<Settings>({
+    printerId: PRINTERS[0].id,
+    formatId: 'A5',
+    part: 'body',
+    ink: 'mono',
+    binding: 'perfect',
+    paperId: PRINTERS[0].spine.value.papers[0]?.id,
+  })
   const printer = PRINTERS.find((p) => p.id === settings.printerId)!
+  const spineCalc = computeSpine(printer, settings.paperId, settings.bodyPages)
 
   function choosePrinter(id: string) {
     const next = PRINTERS.find((p) => p.id === id)!
     // 選んでいた判型がその印刷所にもあれば引き継ぐ
     const formatId = next.formats.some((f) => f.id === settings.formatId) ? settings.formatId : next.formats[0].id
-    setSettings({ ...settings, printerId: id, formatId })
+    // 用紙は印刷所ごとに違うので、同じ id があるときだけ引き継ぐ。手入力の背幅は印刷所が変われば意味が変わるので消す
+    const paperId = next.spine.value.papers.some((x) => x.id === settings.paperId) ? settings.paperId : next.spine.value.papers[0]?.id
+    setSettings({ ...settings, printerId: id, formatId, paperId, spineMm: undefined })
   }
 
   async function open(files: FileList | { name: string; arrayBuffer: () => Promise<ArrayBuffer> }[] | null) {
@@ -181,11 +192,19 @@ export default function App() {
     setLoaded(results)
   }
 
-  function openSample() {
-    // 見本は A5 の本文として作ってある
-    if (printer.formats.some((f) => f.id === 'A5')) setSettings({ ...settings, formatId: 'A5', part: 'body' })
-    const bytes = Uint8Array.from(atob(sampleDataUrl.split(',')[1]), (c) => c.charCodeAt(0))
-    void open([{ name: '見本（A5 本文・わざと不備あり）.pdf', arrayBuffer: async () => bytes.buffer }])
+  function openSample(part: 'body' | 'cover') {
+    // 見本は A5 で作ってある。表紙は「本文 100 ページ・上質90kg」の本の表紙を、背幅 4mm で作ってしまった想定
+    const next: Settings = { ...settings, part, formatId: printer.formats.some((f) => f.id === 'A5') ? 'A5' : settings.formatId }
+    if (part === 'cover') {
+      next.bodyPages = 100
+      next.paperId = printer.spine.value.papers.find((x) => x.id === 'jouhou90')?.id ?? settings.paperId
+      next.spineMm = undefined
+    }
+    setSettings(next)
+    const dataUrl = part === 'cover' ? sampleCover : sampleBody
+    const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), (c) => c.charCodeAt(0))
+    const name = part === 'cover' ? '見本（A5 表紙・背幅違い）.pdf' : '見本（A5 本文・わざと不備あり）.pdf'
+    void open([{ name, arrayBuffer: async () => bytes.buffer }])
   }
 
   return (
@@ -253,7 +272,66 @@ export default function App() {
             </label>
           </>
         )}
+        {settings.part === 'cover' && (
+          <>
+            {printer.spine.value.papers.length > 0 && (
+              <label>
+                本文の用紙
+                <select value={settings.paperId} onChange={(e) => setSettings({ ...settings, paperId: e.target.value })}>
+                  {printer.spine.value.papers.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label>
+              本文のページ数
+              <input
+                type="number"
+                min={1}
+                inputMode="numeric"
+                value={settings.bodyPages ?? ''}
+                onChange={(e) => setSettings({ ...settings, bodyPages: e.target.value ? Number(e.target.value) : undefined })}
+              />
+            </label>
+            <label>
+              背幅（mm、手入力）
+              <input
+                type="number"
+                min={0}
+                step={0.1}
+                inputMode="decimal"
+                placeholder={spineCalc !== undefined ? spineCalc.toFixed(1) : ''}
+                value={settings.spineMm ?? ''}
+                onChange={(e) => setSettings({ ...settings, spineMm: e.target.value ? Number(e.target.value) : undefined })}
+              />
+            </label>
+          </>
+        )}
       </fieldset>
+      {settings.part === 'cover' && (
+        <p className="meta">
+          {settings.spineMm !== undefined
+            ? `入力した背幅 ${settings.spineMm}mm で確かめます。`
+            : spineCalc !== undefined
+              ? `計算した背幅は ${spineCalc.toFixed(2)}mm です。式: ${printer.spine.note}。`
+              : printer.spine.value.method === 'table'
+                ? `${printer.name}は背幅を早見表で決めます。`
+                : '本文のページ数を入れると、背幅を計算して表紙の大きさを確かめます。'}
+          {printer.spine.value.tableUrl && (
+            <>
+              {' '}
+              <a href={printer.spine.value.tableUrl} target="_blank" rel="noreferrer">
+                早見表を開く
+              </a>
+              。
+            </>
+          )}
+          表紙は、表4・背・表1 を横に並べた1枚の PDF を想定しています（カバーは対象外）。
+        </p>
+      )}
       {printer.formats.find((f) => f.id === settings.formatId)?.note && (
         <p className="meta">※ {printer.formats.find((f) => f.id === settings.formatId)!.note}</p>
       )}
@@ -264,8 +342,11 @@ export default function App() {
       </label>
       <p className="sample">
         手元に PDF がなければ{' '}
-        <button type="button" onClick={openSample}>
-          見本で試す
+        <button type="button" onClick={() => openSample('body')}>
+          本文の見本で試す
+        </button>{' '}
+        <button type="button" onClick={() => openSample('cover')}>
+          表紙の見本で試す
         </button>
       </p>
 

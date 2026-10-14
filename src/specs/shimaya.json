@@ -5,7 +5,8 @@
   "sources": {
     "DG": "https://www.shimaya.net/howto/data-genkou.html",
     "PS": "https://www.shimaya.net/howto/ps.html",
-    "BG": "https://www.shimaya.net/bungei/bungei-besic.html"
+    "BG": "https://www.shimaya.net/bungei/bungei-besic.html",
+    "SB": "https://www.shimaya.net/howto/sehaba.html"
   },
   "formats": [
     {
@@ -123,5 +124,17 @@
       "DG"
     ],
     "note": "全ページに必須。通常は仕上がりから 3〜5mm 内側に入れる。隠しノンブルも可"
+  },
+  "spine": {
+    "value": {
+      "method": "table",
+      "includesCover": false,
+      "papers": [],
+      "tableUrl": "https://www.shimaya.net/howto/sehaba.html"
+    },
+    "src": [
+      "SB"
+    ],
+    "note": "式は公開されておらず、本文ページ数で引く早見表のみ。カバーは表の値 +1mm"
   }
 }

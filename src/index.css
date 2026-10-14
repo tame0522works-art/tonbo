@@ -105,7 +105,8 @@ footer {
   font-size: 0.85rem;
   color: var(--muted);
 }
-.settings select {
+.settings select,
+.settings input {
   min-width: 9em;
   padding: 6px 8px;
   border: 1px solid var(--line);

@@ -52,6 +52,13 @@ for (const p of PRINTERS) {
     for (const fid of Object.keys(u!.value.byFormat ?? {})) assert.ok(p.formats.some((f) => f.id === fid), `${where} のページ単位に知らない判型 ${fid}`)
   }
   sourced(p.nombre, 'ノンブル')
+  sourced(p.spine, '背幅')
+  const sp = p.spine.value
+  assert.ok(['linear', 'divide', 'table'].includes(sp.method))
+  if (sp.method === 'table') assert.ok(sp.tableUrl && sp.papers.length === 0, `${where} の早見表`)
+  else assert.ok(sp.papers.length > 0 && sp.papers.every((x) => x.value > 0), `${where} の用紙`)
+  if (sp.method === 'linear') assert.ok(sp.perPage! > 0 && sp.constant! >= 0)
+  assert.equal(new Set(sp.papers.map((x) => x.id)).size, sp.papers.length)
   assert.equal(typeof p.nombre.value.required, 'boolean')
   for (const k of Object.keys(p.sources)) assert.ok(used.has(k), `${where} の出典 ${k} がどこからも使われていない`)
 }

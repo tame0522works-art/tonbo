@@ -1,6 +1,6 @@
 // ページの事実と印刷所の仕様から、期待どおりの指摘が出るか（出ないべきものが出ないか）を確かめる
 import assert from 'node:assert/strict'
-import { checkDocument, type CheckOptions } from '../src/check/rules.ts'
+import { checkDocument, computeSpine, type CheckOptions } from '../src/check/rules.ts'
 import { PT_PER_MM, type DocumentFacts, type ImagePlacement, type PageFacts } from '../src/pdf/inspect.ts'
 import { PRINTERS } from '../src/specs/index.ts'
 
@@ -97,8 +97,8 @@ assert.deepEqual(codes(doc(nikkoShinsho), opts({ printer: spec('nikko'), formatI
   assert.equal(checkDocument(d, opts({ printer: spec('popls'), binding: 'saddle' })).find((x) => x.code === 'rgb-in-mono')?.level, 'info')
   // 表紙: 緑陽社は RGB 歓迎、しまやは変換
   const cover = doc([page(1, { images: [image({ color: 'rgb' })] })])
-  assert.deepEqual(codes(cover, opts({ part: 'cover' })), ['rgb-accepted'])
-  assert.deepEqual(codes(cover, opts({ part: 'cover', printer: spec('shimaya') })), ['rgb-converted'])
+  assert.deepEqual(codes(cover, opts({ part: 'cover' })), ['cover-spine-unknown', 'rgb-accepted'])
+  assert.deepEqual(codes(cover, opts({ part: 'cover', printer: spec('shimaya') })), ['rgb-converted', 'cover-spine-unknown'])
   // 表紙はページ数と判型の大きさを本文の基準では見ない
   assert.ok(!codes(cover, opts({ part: 'cover' })).includes('page-unit'))
 }
@@ -127,6 +127,39 @@ assert.deepEqual(codes(doc(nikkoShinsho), opts({ printer: spec('nikko'), formatI
     checkDocument(d, opts({ printer: spec('popls'), binding: 'saddle' })).map((f) => f.level),
     ['error', 'error', 'warn', 'warn', 'info'],
   )
+}
+
+// --- 表紙と背幅 ---
+{
+  // 背幅の式: 日光企画は表紙込みページ数 × 厚み、緑陽社は 0.05 × 本文 × 係数 + 0.4、ポプルスは全ページ ÷ 係数
+  const near2 = (a: number | undefined, b: number) => assert.ok(a !== undefined && Math.abs(a - b) < 1e-9, `${a} ≒ ${b}`)
+  near2(computeSpine(spec('nikko'), 'jouhou90', 100), 104 * 0.063)
+  near2(computeSpine(spec('ryokuyou'), 'jouhou90', 100), 0.05 * 100 * 1.26 + 0.4)
+  near2(computeSpine(spec('popls'), 'jouhou90', 100), 104 / 16.5)
+  assert.equal(computeSpine(spec('shimaya'), undefined, 100), undefined, 'しまやは早見表だけ')
+  assert.equal(computeSpine(spec('nikko'), 'jouhou90', undefined), undefined)
+
+  // A5・背幅 6.7mm（緑陽社 上質90kg 100ページ）: 仕上がり 302.7×210、塗り足し込み 308.7×216
+  const coverOpts = (over: Partial<CheckOptions> = {}) => opts({ part: 'cover', paperId: 'jouhou90', bodyPages: 100, ...over })
+  const coverPage = (w: number, h: number, over: Partial<PageFacts> = {}) => doc([page(1, { mediaBox: box(w, h), cropBox: box(w, h), ...over })])
+  assert.deepEqual(codes(coverPage(308.7, 216), coverOpts()), [])
+  assert.deepEqual(codes(coverPage(302.7, 210), coverOpts()), ['no-bleed'])
+  // 背幅が 1mm 狭い → 注意、3mm 広い → 要修正
+  const narrow = checkDocument(coverPage(307.7, 216), coverOpts())
+  assert.deepEqual(narrow.map((f) => [f.code, f.level]), [['cover-spine', 'warn']])
+  assert.match(narrow[0].title, /1mm 狭い/)
+  assert.deepEqual(
+    checkDocument(coverPage(311.7, 216), coverOpts()).map((f) => [f.code, f.level]),
+    [['cover-spine', 'error']],
+  )
+  // TrimBox がある表紙は、それで幅を見る
+  assert.deepEqual(codes(coverPage(320, 230, { trimBox: box(302.7, 210, 5) }), coverOpts()), [])
+  // トンボ付き（天地左右に 10mm ずつ）でも、天地の余白から幅を逆算する
+  assert.deepEqual(codes(coverPage(322.7, 230), coverOpts()), ['with-marks'])
+  // 高さが合わなければ大きさの不一致
+  assert.deepEqual(codes(coverPage(308.7, 263), coverOpts()), ['cover-size'])
+  // 入力した背幅が計算値より優先される（しまや出版は早見表の値を入れてもらう）
+  assert.deepEqual(codes(coverPage(308.3, 216), coverOpts({ printer: spec('shimaya'), spineMm: 6.3 })), [])
 }
 
 console.log('check:rules ok')

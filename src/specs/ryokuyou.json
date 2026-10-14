@@ -9,7 +9,8 @@
     "F41": "https://www.ryokuyou.co.jp/doujin/faq/faq41.html",
     "F98": "https://www.ryokuyou.co.jp/doujin/faq/faq98.html",
     "M01": "https://www.ryokuyou.co.jp/doujin/set/m01.html",
-    "F61": "https://www.ryokuyou.co.jp/doujin/faq/faq61.html"
+    "F61": "https://www.ryokuyou.co.jp/doujin/faq/faq61.html",
+    "SH": "https://www.ryokuyou.co.jp/doujin/sehaba"
   },
   "formats": [
     {
@@ -156,5 +157,84 @@
       "F61"
     ],
     "note": "全ページに必須。字の高さ 2mm 以上で、黒（K100%）で入れる。隠しノンブルも可（仕上がり線より内側）"
+  },
+  "spine": {
+    "value": {
+      "method": "linear",
+      "perPage": 0.05,
+      "constant": 0.4,
+      "includesCover": false,
+      "papers": [
+        {
+          "id": "comic-rumba84",
+          "label": "コミックルンバ84kg",
+          "value": 1.32
+        },
+        {
+          "id": "comic-rumba-natural",
+          "label": "コミックルンバナチュラル70.5kg",
+          "value": 1.06
+        },
+        {
+          "id": "jouhou70",
+          "label": "上質70kg",
+          "value": 0.97
+        },
+        {
+          "id": "jouhou90",
+          "label": "上質90kg",
+          "value": 1.26
+        },
+        {
+          "id": "jouhou110",
+          "label": "上質110kg",
+          "value": 1.5
+        },
+        {
+          "id": "soft-pastel",
+          "label": "ソフトパステル",
+          "value": 1.88
+        },
+        {
+          "id": "cream",
+          "label": "クリーム書籍",
+          "value": 0.97
+        },
+        {
+          "id": "mckinley-art",
+          "label": "ハイマッキンレーアート",
+          "value": 1.2
+        },
+        {
+          "id": "mckinley-matt",
+          "label": "ハイマッキンレーマット",
+          "value": 1.3
+        },
+        {
+          "id": "lightstuff",
+          "label": "ライトスタッフGA",
+          "value": 1.5
+        },
+        {
+          "id": "montecion56",
+          "label": "モンテシオン56kg",
+          "value": 1.17
+        },
+        {
+          "id": "montecion83",
+          "label": "モンテシオン83.5kg",
+          "value": 1.77
+        },
+        {
+          "id": "iro-jouhou",
+          "label": "色上質厚口",
+          "value": 1.06
+        }
+      ]
+    },
+    "src": [
+      "SH"
+    ],
+    "note": "0.05 × 本文ページ数 × 紙係数 + 0.4（mm）。背幅計算ツールの設定値から読み取った式"
   }
 }

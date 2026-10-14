@@ -6,7 +6,8 @@
     "KH": "https://www2.popls.co.jp/pop/genkou/kihon.html",
     "SG": "https://www2.popls.co.jp/pop/genkou/saigo.html",
     "QA": "https://www2.popls.co.jp/pop/genkou/q_and_a.html",
-    "ST": "https://www2.popls.co.jp/pop/book/standard.html"
+    "ST": "https://www2.popls.co.jp/pop/book/standard.html",
+    "HY": "https://www2.popls.co.jp/pop/genkou/hyoushi.html"
   },
   "formats": [
     {
@@ -156,5 +157,37 @@
       "SG"
     ],
     "note": "データ原稿は、ファイル名で順番がわかればノンブルは不要。入れる場合は仕上がりから 3mm 以上内側（ノド側は 6mm 以上）"
+  },
+  "spine": {
+    "value": {
+      "method": "divide",
+      "includesCover": true,
+      "papers": [
+        {
+          "id": "jouhou90",
+          "label": "白上質90k・淡クリーム90k",
+          "value": 16.5
+        },
+        {
+          "id": "jouhou70",
+          "label": "白上質70k",
+          "value": 21.5
+        },
+        {
+          "id": "coat110",
+          "label": "コート110k・淡クリーム70k",
+          "value": 20.5
+        },
+        {
+          "id": "jouhou110",
+          "label": "白上質110k・コミック紙",
+          "value": 13.5
+        }
+      ]
+    },
+    "src": [
+      "HY"
+    ],
+    "note": "本全体のページ数（表紙と口絵を含む）÷ 係数（mm）"
   }
 }
