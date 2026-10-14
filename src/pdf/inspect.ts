@@ -1,7 +1,7 @@
 /**
  * 検査に必要な事実だけをページごとに集める（判定はしない。判定は印刷所の仕様と突き合わせる側で行う）。
  * - ページの枠（MediaBox / CropBox / BleedBox / TrimBox）
- * - 実際に文字を書くのに使われたフォントと、その埋め込みの有無
+ * - 実際に見える文字を描くのに使われたフォントと、その埋め込みの有無（透明な文字だけのフォントは数えない）
  * - 画像の画素数・色空間と、ページ上に置かれた大きさ（そこから実効解像度が決まる）
  * - 図形や文字の塗りに RGB が使われたか
  * 描画命令は cm（座標変換）・q/Q（状態の保存と復元）・Do（画像や部品の配置）など、必要な演算子だけを解釈する。
@@ -50,7 +50,7 @@ export type PageFacts = {
   rotate: number
   fonts: FontInfo[]
   images: ImagePlacement[]
-  /** 塗りや線の色を RGB で指定した回数（文字の色も含む） */
+  /** RGB の色で塗った・線を引いた・文字を描いた回数 */
   rgbPaintOps: number
   spotColors: string[]
   /** 読み取れなかったもの（未対応の圧縮形式など）。検査結果に「確かめられなかった」として出す */
@@ -138,7 +138,7 @@ async function inspectPage(doc: PdfDocument, page: PdfDict, inh: Inherited, numb
   }
   const content = await contentBytes(doc, page.get('Contents'), facts)
   const resources = await doc.getDict(inh.Resources)
-  const ctx: Ctx = { doc, facts, fontsSeen: new Map(), spots: new Set(), formsActive: new Set() }
+  const ctx: Ctx = { doc, facts, fontsSeen: new Map(), fontCache: new Map(), spots: new Set(), formsActive: new Set() }
   await run(ctx, content, resources, [unit, 0, 0, unit, 0, 0])
   facts.fonts = [...ctx.fontsSeen.values()]
   facts.spotColors = [...ctx.spots]
@@ -182,18 +182,27 @@ type Ctx = {
   doc: PdfDocument
   facts: PageFacts
   fontsSeen: Map<string, FontInfo>
+  /** フォントの辞書を読んだ結果（同じフォントを何度も選び直す PDF が多いので、読むのは1回だけにする） */
+  fontCache: Map<string, FontInfo | undefined>
   spots: Set<string>
   /** 部品（Form XObject）が自分自身を呼ぶ壊れたファイルで止まらないように */
   formsActive: Set<PdfValue>
 }
 
-type GState = { ctm: Matrix; fill: ColorFamily; stroke: ColorFamily }
+/**
+ * 描画の状態のうち、検査に要るものだけ。font と textRender（文字の表示モード）は q/Q で保存・復元される。
+ * 表示モード 3 は「塗りも線もない」透明な文字で、スキャンした PDF の検索用の文字などに使われ、印刷されない
+ */
+type GState = { ctm: Matrix; fill: ColorFamily; stroke: ColorFamily; font?: { key: string; info?: FontInfo }; textRender: number }
 
-async function run(ctx: Ctx, content: Uint8Array, resources: PdfDict | undefined, ctm: Matrix): Promise<void> {
+/** 部品（Form XObject）は、呼び出した側の状態を受け継いで描かれる */
+type Inherit = Pick<GState, 'font' | 'textRender'>
+
+async function run(ctx: Ctx, content: Uint8Array, resources: PdfDict | undefined, ctm: Matrix, inherit: Inherit = { textRender: 0 }): Promise<void> {
   const { doc } = ctx
   const lx = new Lexer(content)
   const stack: GState[] = []
-  let gs: GState = { ctm, fill: 'gray', stroke: 'gray' }
+  let gs: GState = { ctm, fill: 'gray', stroke: 'gray', ...inherit }
   let operands: PdfValue[] = []
   const resource = async (kind: string, key: PdfValue) => {
     if (!isName(key)) return undefined
@@ -233,11 +242,13 @@ async function run(ctx: Ctx, content: Uint8Array, resources: PdfDict | undefined
         if (nums.length === 6) gs.ctm = multiply(nums as Matrix, gs.ctm)
         break
       }
+      // 色を選ぶ命令では数えず、その色で実際に塗ったときに数える（下の f・S・Tj など）。
+      // 色を選んだだけで何も描かない PDF や、透明な文字の色指定を「RGB が使われている」と誤って数えないため
       case 'rg':
+        gs.fill = 'rgb'
+        break
       case 'RG':
-        paint('rgb')
-        if (op === 'rg') gs.fill = 'rgb'
-        else gs.stroke = 'rgb'
+        gs.stroke = 'rgb'
         break
       case 'k':
         gs.fill = 'cmyk'
@@ -258,12 +269,20 @@ async function run(ctx: Ctx, content: Uint8Array, resources: PdfDict | undefined
         else gs.stroke = fam
         break
       }
-      case 'sc':
-      case 'scn':
+      case 'f':
+      case 'F':
+      case 'f*':
         paint(gs.fill)
         break
-      case 'SC':
-      case 'SCN':
+      case 'S':
+      case 's':
+        paint(gs.stroke)
+        break
+      case 'B':
+      case 'B*':
+      case 'b':
+      case 'b*':
+        paint(gs.fill)
         paint(gs.stroke)
         break
       case 'sh': {
@@ -272,12 +291,25 @@ async function run(ctx: Ctx, content: Uint8Array, resources: PdfDict | undefined
         break
       }
       case 'Tf': {
+        // 書体を選んだだけでは数えない。実際に見える文字を描いたときに数える（下の Tj など）
         const fontRef = await resource('Font', operands[0])
         const key = isRef(fontRef) ? `${fontRef.num}` : isName(operands[0]) ? operands[0].name : ''
-        if (key && !ctx.fontsSeen.has(key)) {
-          const f = await fontInfo(doc, fontRef)
-          if (f) ctx.fontsSeen.set(key, f)
-        }
+        if (!key) break
+        if (!ctx.fontCache.has(key)) ctx.fontCache.set(key, await fontInfo(doc, fontRef))
+        gs.font = { key, info: ctx.fontCache.get(key) }
+        break
+      }
+      case 'Tr':
+        if (typeof operands[0] === 'number') gs.textRender = operands[0]
+        break
+      case 'Tj':
+      case 'TJ':
+      case "'":
+      case '"': {
+        if (gs.font?.info && gs.textRender !== 3 && !ctx.fontsSeen.has(gs.font.key)) ctx.fontsSeen.set(gs.font.key, gs.font.info)
+        // 表示モード 0・2・4・6 は塗り、1・2・5・6 は線で文字を描く（3 と 7 は描かない）
+        if ([0, 2, 4, 6].includes(gs.textRender)) paint(gs.fill)
+        if ([1, 2, 5, 6].includes(gs.textRender)) paint(gs.stroke)
         break
       }
       case 'Do': {
@@ -293,7 +325,7 @@ async function run(ctx: Ctx, content: Uint8Array, resources: PdfDict | undefined
           const fm = Array.isArray(m) && m.length === 6 && m.every((x) => typeof x === 'number') ? (m as Matrix) : ([1, 0, 0, 1, 0, 0] as Matrix)
           try {
             const body = await doc.decode(xo)
-            await run(ctx, body, (await doc.getDict(xo.dict.get('Resources'))) ?? resources, multiply(fm, gs.ctm))
+            await run(ctx, body, (await doc.getDict(xo.dict.get('Resources'))) ?? resources, multiply(fm, gs.ctm), { font: gs.font, textRender: gs.textRender })
           } catch (e) {
             if (e instanceof UnsupportedFilter) ctx.facts.unreadable.push(`部品 ${isName(operands[0]) ? operands[0].name : ''}（${e.filter}）`)
             else throw e

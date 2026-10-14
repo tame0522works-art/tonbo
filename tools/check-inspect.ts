@@ -45,7 +45,9 @@ for (const compressed of [false, true]) {
     `BT /F1 10 Tf 1 0 0 rg (a) Tj /F2 10 Tf (b) Tj /F4 10 Tf (c) Tj ET`,
     `0 0 1 RG 0 0 m 10 10 l S`,
     `/CS0 cs 0.5 scn 0 0 10 10 re f`,
-    `/CS1 cs 1 0 0 scn`,
+    `/CS1 cs 1 0 0 scn 0 0 5 5 re f`,
+    // 色を選んだだけで何も描かなければ数えない
+    `q 0 1 0 rg Q`,
     // インライン画像（RGB 30×30px を 72pt 角に → 30dpi）。中身に EI に似たバイトが入っていても読み飛ばせる
     'BI /W 30 /H 30 /CS /RGB /BPC 8 ID \x00EIx\x01\x02 EI',
     'q 72 0 0 72 0 0 cm BI /W 30 /H 30 /CS /RGB /BPC 8 ID \x00\x01 EI Q',
@@ -105,11 +107,36 @@ for (const compressed of [false, true]) {
     ],
     '使われたフォントだけを、サブセット名の接頭辞を除いて数える',
   )
-  // rg・RG・ICC（N=3）の scn の3回。特色の scn は数えない
-  assert.equal(a.rgbPaintOps, 3)
+  // RGB で描いた回数: rg の色の文字3回・RG の色の線1回・ICC（N=3）の色の塗り1回。特色の塗りは数えない
+  assert.equal(a.rgbPaintOps, 5)
   assert.deepEqual(a.spotColors, ['特色'])
   assert.deepEqual(a.unreadable, [])
   assert.equal(z.rgbPaintOps, 0)
+}
+
+// 文字の表示モード: 透明な文字（3 Tr、スキャンした PDF の検索用の文字など）だけに使われたフォントは数えない
+{
+  const b = new PdfBuilder()
+  const root = b.reserve()
+  const pages = b.reserve()
+  const font = (name: string) => b.add(`<< /Type /Font /Subtype /TrueType /BaseFont /${name} >>`)
+  const [fOcr, fAfterQ, fSelectedOnly, fInForm] = [font('OcrHidden'), font('AfterRestore'), font('SelectedOnly'), font('InForm')]
+  // 部品の中では書体を選ばず、呼び出し側で選んだ書体のまま文字を描く
+  const form = b.add('<< /Type /XObject /Subtype /Form /BBox [0 0 100 100] >>', 'BT (x) Tj ET')
+  const content = [
+    'q BT 3 Tr /F1 10 Tf (hidden) Tj ET Q', // 透明な文字だけ（表示モードは BT/ET では戻らないので q/Q で囲む）
+    'q 3 Tr Q BT /F2 10 Tf (shown) Tj ET', // q/Q で表示モードが 0 に戻る
+    'BT /F3 10 Tf ET', // 選んだだけで描かない
+    'BT /F4 10 Tf ET /Fm Do', // 部品が受け継いで描く
+  ].join('\n')
+  const c = b.add('<< >>', content)
+  const p = b.add(
+    `<< /Type /Page /Parent ${pages} 0 R /MediaBox [0 0 100 100] /Contents ${c} 0 R /Resources << /Font << /F1 ${fOcr} 0 R /F2 ${fAfterQ} 0 R /F3 ${fSelectedOnly} 0 R /F4 ${fInForm} 0 R >> /XObject << /Fm ${form} 0 R >> >> >>`,
+  )
+  b.set(root, `<< /Type /Catalog /Pages ${pages} 0 R >>`)
+  b.set(pages, `<< /Type /Pages /Kids [${p} 0 R] /Count 1 >>`)
+  const f = await inspectPdf(b.build(root))
+  assert.deepEqual(f.pages[0].fonts.map((x) => x.name).sort(), ['AfterRestore', 'InForm'])
 }
 
 console.log('check:inspect ok')
