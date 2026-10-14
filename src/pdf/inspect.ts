@@ -220,7 +220,6 @@ async function run(ctx: Ctx, content: Uint8Array, resources: PdfDict | undefined
       continue
     }
     const op = tok.op
-    const nums = operands.filter((x): x is number => typeof x === 'number')
     switch (op) {
       case 'q':
         stack.push(gs)
@@ -229,9 +228,11 @@ async function run(ctx: Ctx, content: Uint8Array, resources: PdfDict | undefined
       case 'Q':
         gs = stack.pop() ?? gs
         break
-      case 'cm':
+      case 'cm': {
+        const nums = operands.filter((x): x is number => typeof x === 'number')
         if (nums.length === 6) gs.ctm = multiply(nums as Matrix, gs.ctm)
         break
+      }
       case 'rg':
       case 'RG':
         paint('rgb')

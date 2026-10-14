@@ -14,8 +14,8 @@ const CSP = [
   "script-src 'self'",
   "style-src 'self'",
   "font-src 'self'",
-  // ページの表示は読み込んだファイルから作った blob: の画像を使う
-  "img-src 'self' data: blob:",
+  // ページの表示は canvas に描くだけで、画像の URL（data: や blob:）は使わない
+  "img-src 'self'",
   "connect-src 'none'",
   "worker-src 'self'",
   "base-uri 'none'",
@@ -69,6 +69,9 @@ function buildVersion(): string {
 // GitHub Pages ではリポジトリ名の下（/tonbo/）で配信されるので、CI から BASE_PATH で渡す
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
+  // ほかの作品の開発サーバーと重ならないよう、ポートを固定する
+  server: { port: 5191, strictPort: true },
+  preview: { port: 5192, strictPort: true },
   define: { __APP_VERSION__: JSON.stringify(buildVersion()) },
   plugins: [bcmapAsModule(), contentSecurityPolicy(), react()],
 })

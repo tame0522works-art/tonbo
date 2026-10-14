@@ -16,7 +16,9 @@
     "check:rules": "tsx tools/check-rules.ts",
     "samples": "tsx tools/samples.ts",
     "check:nombre": "tsx tools/check-nombre.ts",
-    "check:raster": "tsx tools/check-raster.ts"
+    "check:raster": "tsx tools/check-raster.ts",
+    "screenshots": "tsx tools/screenshots.ts",
+    "bench": "tsx tools/bench.ts"
   },
   "dependencies": {
     "pdfjs-dist": "^6.4.299",

@@ -24,9 +24,16 @@ export const isStream = (v: unknown): v is PdfStream => typeof v === 'object' &&
 export const isDict = (v: unknown): v is PdfDict => v instanceof Map
 export const isOperator = (v: unknown): v is PdfOperator => typeof v === 'object' && v !== null && (v as PdfOperator).kind === 'op'
 
-const WHITE = new Set([0, 9, 10, 12, 13, 32])
-const DELIM = new Set([...'()<>[]{}/%'].map((c) => c.charCodeAt(0)))
-const isRegular = (b: number) => !WHITE.has(b) && !DELIM.has(b)
+// 描画命令は数 MB になることがあり、1バイトごとに呼ばれるので、空白と区切りの判定は表引きにする
+const WHITE_TABLE = new Uint8Array(256)
+const REGULAR_TABLE = new Uint8Array(256).fill(1)
+for (const c of [0, 9, 10, 12, 13, 32]) {
+  WHITE_TABLE[c] = 1
+  REGULAR_TABLE[c] = 0
+}
+for (const ch of '()<>[]{}/%') REGULAR_TABLE[ch.charCodeAt(0)] = 0
+const WHITE = { has: (c: number) => WHITE_TABLE[c] === 1 }
+const isRegular = (b: number) => REGULAR_TABLE[b] === 1
 
 export class PdfSyntaxError extends Error {}
 
@@ -51,9 +58,11 @@ export class Lexer {
 
   /** 空白や区切りまでの1語（数値・true・obj・演算子など）を ASCII で返す */
   private word(): string {
-    const start = this.pos
-    while (this.pos < this.bytes.length && isRegular(this.bytes[this.pos])) this.pos++
-    return latin1(this.bytes.subarray(start, this.pos))
+    // 語は数文字と短いので、部分配列を作って変換するより1文字ずつつなぐほうが速い
+    const b = this.bytes
+    let s = ''
+    while (this.pos < b.length && REGULAR_TABLE[b[this.pos]] === 1) s += String.fromCharCode(b[this.pos++])
+    return s
   }
 
   /**
