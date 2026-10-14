@@ -1,0 +1,89 @@
+:root {
+  --bg: #f6f5f1;
+  --fg: #1f2328;
+  --muted: #66707a;
+  --line: #d6d3cb;
+  --accent: #c2412d;
+  --surface: #ffffff;
+  color-scheme: light dark;
+  font-family: system-ui, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17191c;
+    --fg: #e6e4df;
+    --muted: #9aa3ad;
+    --line: #353a40;
+    --accent: #f07a62;
+    --surface: #202328;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+main {
+  max-width: 1100px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+main.dragging {
+  outline: 3px dashed var(--accent);
+  outline-offset: -8px;
+}
+h1 {
+  margin: 0 0 4px;
+  letter-spacing: 0.08em;
+}
+header p,
+.meta,
+footer {
+  color: var(--muted);
+}
+.drop {
+  display: block;
+  margin: 24px 0;
+  padding: 40px 16px;
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: center;
+  cursor: pointer;
+}
+.drop input {
+  display: block;
+  margin: 12px auto 0;
+}
+section {
+  margin: 32px 0;
+  overflow-x: auto;
+}
+h2 {
+  font-size: 1.1rem;
+  word-break: break-all;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+th,
+td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+.error {
+  color: var(--accent);
+}
+footer {
+  margin-top: 48px;
+  font-size: 0.8rem;
+}

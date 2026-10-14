@@ -1,0 +1,30 @@
+{
+  "name": "tonbo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "同人誌の入稿データを、印刷所の仕様に照らしてブラウザの中だけで確かめる",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "check:reader": "tsx tools/check-reader.ts",
+    "check:inspect": "tsx tools/check-inspect.ts",
+    "check": "npm run check:reader && npm run check:inspect"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "oxlint": "^1.88.0",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.4"
+  }
+}
