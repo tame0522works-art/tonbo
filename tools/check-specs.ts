@@ -53,6 +53,11 @@ for (const p of PRINTERS) {
   }
   sourced(p.nombre, 'ノンブル')
   sourced(p.spine, '背幅')
+  for (const [k, v] of Object.entries(p.imageFormats)) {
+    // 記載なし（unspecified）でも、どのページを見て記載がないと判断したかを出典に残す
+    cite(v.src, `画像形式（${k}）`)
+    assert.ok(['accepted', 'discouraged', 'unspecified'].includes(v.value))
+  }
   const sp = p.spine.value
   assert.ok(['linear', 'divide', 'table'].includes(sp.method))
   if (sp.method === 'table') assert.ok(sp.tableUrl && sp.papers.length === 0, `${where} の早見表`)

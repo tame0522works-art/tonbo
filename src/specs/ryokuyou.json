@@ -236,5 +236,21 @@
       "SH"
     ],
     "note": "0.05 × 本文ページ数 × 紙係数 + 0.4（mm）。背幅計算ツールの設定値から読み取った式"
+  },
+  "imageFormats": {
+    "png": {
+      "value": "accepted",
+      "src": [
+        "PS"
+      ],
+      "note": "PSD（推奨）・TIFF・PNG・JPG・EPS を受け付ける"
+    },
+    "jpeg": {
+      "value": "accepted",
+      "src": [
+        "PS"
+      ],
+      "note": "PSD（推奨）・TIFF・PNG・JPG・EPS を受け付ける"
+    }
   }
 }

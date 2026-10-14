@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import type { PDFDocumentProxy } from 'pdfjs-dist'
 import type { Box } from './pdf/inspect.ts'
+import type { Preview } from './preview.ts'
 
 export type Mark = { box: Box; label?: string }
 
 type Props = {
-  pdf: Promise<PDFDocumentProxy>
+  preview: Preview
   page: number
+  /** 検査で決めたページの枠（pt） */
+  pageBox: Box
   marks: Mark[]
   level: 'error' | 'warn' | 'info'
   /** 表示の幅（CSS px） */
@@ -15,52 +17,31 @@ type Props = {
 
 type Drawn = { w: number; h: number; rects: { x: number; y: number; w: number; h: number; label?: string }[] }
 
-export function PagePreview({ pdf, page, marks, level, width = 260 }: Props) {
+export function PagePreview({ preview, page, pageBox, marks, level, width = 260 }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const [drawn, setDrawn] = useState<Drawn>()
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    let cancelled = false
-    let task: { cancel: () => void } | undefined
+    const abort = new AbortController()
     ;(async () => {
       try {
-        const doc = await pdf
-        const p = await doc.getPage(page)
-        const base = p.getViewport({ scale: 1 })
-        const viewport = p.getViewport({ scale: width / base.width })
-        const ratio = window.devicePixelRatio || 1
         const c = canvas.current
-        if (!c || cancelled) return
-        c.width = Math.round(viewport.width * ratio)
-        c.height = Math.round(viewport.height * ratio)
-        const render = p.render({
-          canvas: c,
-          viewport,
-          transform: ratio === 1 ? undefined : [ratio, 0, 0, ratio, 0, 0],
-          // 画面用ではなく印刷されるとおりに描く（印刷しない注釈やレイヤーは出さない）。
-          // 印刷用の描画は requestAnimationFrame を待たないので、裏に回ったタブでも止まらない
-          intent: 'print',
-        })
-        task = render
-        await render.promise
-        if (cancelled) return
-        // PDF の座標（左下が原点）を、回転と表示範囲も含めて画面の座標に直す
+        if (!c) return
+        const r = await preview.render(page, c, width, pageBox, abort.signal)
+        if (abort.signal.aborted) return
         const rects = marks.map((m) => {
-          const [x0, y0] = viewport.convertToViewportPoint(m.box.x0, m.box.y0) as [number, number]
-          const [x1, y1] = viewport.convertToViewportPoint(m.box.x1, m.box.y1) as [number, number]
+          const [x0, y0] = r.toView(m.box.x0, m.box.y0)
+          const [x1, y1] = r.toView(m.box.x1, m.box.y1)
           return { x: Math.min(x0, x1), y: Math.min(y0, y1), w: Math.abs(x1 - x0), h: Math.abs(y1 - y0), label: m.label }
         })
-        setDrawn({ w: viewport.width, h: viewport.height, rects })
+        setDrawn({ w: r.w, h: r.h, rects })
       } catch {
-        if (!cancelled) setFailed(true)
+        if (!abort.signal.aborted) setFailed(true)
       }
     })()
-    return () => {
-      cancelled = true
-      task?.cancel()
-    }
-  }, [pdf, page, marks, width])
+    return () => abort.abort()
+  }, [preview, page, pageBox, marks, width])
 
   return (
     <figure className={`preview ${level}`} style={{ width }}>

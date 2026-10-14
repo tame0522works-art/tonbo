@@ -200,5 +200,21 @@
       "S"
     ],
     "note": "表紙込みのページ数 × 本文用紙の厚み（mm）。カバーは背幅 +1mm"
+  },
+  "imageFormats": {
+    "png": {
+      "value": "discouraged",
+      "src": [
+        "Q"
+      ],
+      "note": "推奨は PSD・TIFF・PDF・ai。JPG・PNG・BMP も印刷はできるが推奨しない"
+    },
+    "jpeg": {
+      "value": "discouraged",
+      "src": [
+        "Q"
+      ],
+      "note": "推奨は PSD・TIFF・PDF・ai。JPG・PNG・BMP も印刷はできるが推奨しない"
+    }
   }
 }

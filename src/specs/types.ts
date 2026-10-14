@@ -66,6 +66,9 @@ export type SpineRule = {
   tableUrl?: string
 }
 
+/** 画像原稿の形式の扱い。discouraged は「印刷はできるが推奨しない」 */
+export type ImageFormatPolicy = 'accepted' | 'discouraged' | 'unspecified'
+
 export type PrinterSpec = {
   id: string
   name: string
@@ -79,10 +82,12 @@ export type PrinterSpec = {
     gray: Sourced<Resolution>
     mono: Sourced<Resolution>
   }
+  /** body はスミ刷り（モノクロ）本文、cover はフルカラー（表紙・カラー本文）での RGB の扱い */
   rgb: { body: Sourced<RgbPolicy>; cover: Sourced<RgbPolicy> }
   /** 埋め込まれていなくても不備としないと明記されたフォント（名前の一部で照合する） */
   fontEmbedExempt?: Sourced<string[]>
   pageUnit: { perfect?: Sourced<PageUnit>; saddle?: Sourced<PageUnit> }
   nombre: Sourced<NombreRule>
   spine: Sourced<SpineRule>
+  imageFormats: { png: Sourced<ImageFormatPolicy>; jpeg: Sourced<ImageFormatPolicy> }
 }

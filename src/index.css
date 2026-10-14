@@ -264,3 +264,17 @@ summary {
   color: #66707a;
   font-size: 0.85rem;
 }
+.drop-note {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.file-name {
+  display: block;
+  max-width: 14em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.8rem;
+  color: var(--muted);
+}

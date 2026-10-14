@@ -1,16 +1,26 @@
 import { useMemo, useState } from 'react'
-import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { PagePreview } from './PagePreview.tsx'
-import { openForPreview, type Preview } from './preview.ts'
+import { openImagePreview, openPdfPreview, type Preview } from './preview.ts'
 import type { TextItem } from './check/nombre.ts'
 import { checkDocument, computeSpine, type CheckOptions, type Finding } from './check/rules.ts'
 import { extractTexts } from './check/text.ts'
 import { boxHeightMm, boxWidthMm, inspectPdf, type DocumentFacts, type PageFacts } from './pdf/inspect.ts'
+import { checkRasters, sortByName, type RasterFile } from './raster/facts.ts'
+import { inspectRaster } from './raster/inspect.ts'
 import sampleCover from './samples/sample-a5-cover-ng.pdf?inline'
 import sampleBody from './samples/sample-a5-ng.pdf?inline'
 import { PRINTERS } from './specs/index.ts'
 
-type Loaded = { fileName: string; facts: DocumentFacts; preview: Preview; texts?: TextItem[][] } | { fileName: string; error: string }
+type Loaded =
+  | { kind: 'pdf'; fileName: string; facts: DocumentFacts; preview: Preview; texts?: TextItem[][] }
+  /** 画像原稿はまとめて1冊として扱う。大きさは判型や背幅の選び方で変わるので、検査のたびに求める */
+  | { kind: 'images'; fileName: string; files: RasterFile[]; preview: Preview }
+  | { kind: 'error'; fileName: string; error: string }
+
+type InputFile = { name: string; type?: string; arrayBuffer: () => Promise<ArrayBuffer> }
+
+const isPdf = (b: Uint8Array) => b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46
+const isRaster = (b: Uint8Array) => (b[0] === 0x89 && b[1] === 0x50) || (b[0] === 0xff && b[1] === 0xd8)
 type Settings = Omit<CheckOptions, 'printer'> & { printerId: string }
 
 const LEVEL_LABEL = { error: '要修正', warn: '注意', info: '参考' } as const
@@ -33,7 +43,7 @@ function pageRanges(pages: number[]): string {
 /** 一度に開くページの数。多いと描画に時間がかかるので、残りは数だけ伝える */
 const PREVIEW_PAGES = 4
 
-function FindingItem({ f, pdf }: { f: Finding; pdf: Promise<PDFDocumentProxy> }) {
+function FindingItem({ f, preview, pages }: { f: Finding; preview: Preview; pages: PageFacts[] }) {
   const sources = [...new Map(f.sources.map((s) => [s.url, s])).values()]
   const [open, setOpen] = useState(false)
   // 赤枠のあるページを先に見せる
@@ -57,7 +67,7 @@ function FindingItem({ f, pdf }: { f: Finding; pdf: Promise<PDFDocumentProxy> })
         {open && (
           <div className="previews">
             {shown.map((s) => (
-              <PagePreview key={s.page} pdf={pdf} page={s.page} marks={s.marks} level={f.level} />
+              <PagePreview key={s.page} preview={preview} page={s.page} pageBox={pages[s.page - 1].cropBox} marks={s.marks} level={f.level} />
             ))}
             {f.pages.length > PREVIEW_PAGES && <p className="meta">ほか {f.pages.length - PREVIEW_PAGES} ページ</p>}
           </div>
@@ -78,14 +88,17 @@ function FindingItem({ f, pdf }: { f: Finding; pdf: Promise<PDFDocumentProxy> })
   )
 }
 
-function PageRow({ p }: { p: PageFacts }) {
+function PageRow({ p, name }: { p: PageFacts; name?: string }) {
   const minDpi = p.images.filter((i) => i.color !== 'mask').reduce((m, i) => Math.min(m, i.dpiX, i.dpiY), Infinity)
   const notEmbedded = p.fonts.filter((f) => !f.embedded)
   return (
     <tr>
-      <td>{p.number}</td>
+      <td>
+        {p.number}
+        {name && <span className="file-name">{name}</span>}
+      </td>
       <td>{p.trimBox ? mmText(boxWidthMm(p.trimBox), boxHeightMm(p.trimBox)) : '—'}</td>
-      <td>{mmText(boxWidthMm(p.cropBox), boxHeightMm(p.cropBox))}</td>
+      <td>{p.sizeUnknown ? '不明' : mmText(boxWidthMm(p.cropBox), boxHeightMm(p.cropBox))}</td>
       <td>{Number.isFinite(minDpi) ? `${Math.round(minDpi)} dpi` : '—'}</td>
       <td>{[...new Set(p.images.map((i) => i.color))].join('・') || '—'}</td>
       <td>{p.rgbPaintOps > 0 ? `RGB ${p.rgbPaintOps}` : '—'}</td>
@@ -96,22 +109,30 @@ function PageRow({ p }: { p: PageFacts }) {
 
 function Result({ l, settings }: { l: Loaded; settings: Settings }) {
   const printer = PRINTERS.find((p) => p.id === settings.printerId)!
-  const findings = useMemo(() => ('facts' in l ? checkDocument(l.facts, { ...settings, printer }, l.texts) : []), [l, settings, printer])
-  if ('error' in l) {
+  const checked = useMemo(() => {
+    const opts = { ...settings, printer }
+    if (l.kind === 'pdf') return { facts: l.facts, findings: checkDocument(l.facts, opts, l.texts) }
+    if (l.kind === 'images') return checkRasters(l.files, opts)
+    return undefined
+  }, [l, settings, printer])
+  if (l.kind === 'error' || !checked) {
     return (
       <section>
         <h2>{l.fileName}</h2>
-        <p className="error">読み取れませんでした: {l.error}</p>
+        <p className="error">読み取れませんでした: {l.kind === 'error' ? l.error : ''}</p>
       </section>
     )
   }
+  const { facts, findings } = checked
   const counts = { error: 0, warn: 0, info: 0 }
   for (const f of findings) counts[f.level]++
   return (
     <section>
       <h2>{l.fileName}</h2>
       <p className="meta">
-        PDF {l.facts.version}・{l.facts.pages.length} ページ{l.facts.pdfx && `・${l.facts.pdfx}`}
+        {l.kind === 'pdf'
+          ? `PDF ${facts.version}・${facts.pages.length} ページ${facts.pdfx ? `・${facts.pdfx}` : ''}`
+          : `画像 ${l.files.length} 枚を、ファイル名の順に 1〜${l.files.length} ページとして確かめています`}
       </p>
       <p className={`summary ${counts.error ? 'error' : counts.warn ? 'warn' : 'ok'}`}>
         {counts.error + counts.warn === 0 ? `${printer.name}の仕様で見つかった問題はありません` : `要修正 ${counts.error} 件・注意 ${counts.warn} 件`}
@@ -119,7 +140,7 @@ function Result({ l, settings }: { l: Loaded; settings: Settings }) {
       </p>
       <ul className="findings">
         {findings.map((f) => (
-          <FindingItem key={f.code} f={f} pdf={l.preview.pdf} />
+          <FindingItem key={f.code} f={f} preview={l.preview} pages={facts.pages} />
         ))}
       </ul>
       <details>
@@ -138,8 +159,8 @@ function Result({ l, settings }: { l: Loaded; settings: Settings }) {
               </tr>
             </thead>
             <tbody>
-              {l.facts.pages.map((p) => (
-                <PageRow key={p.number} p={p} />
+              {facts.pages.map((p) => (
+                <PageRow key={p.number} p={p} name={l.kind === 'images' ? l.files[p.number - 1].name : undefined} />
               ))}
             </tbody>
           </table>
@@ -172,22 +193,41 @@ export default function App() {
     setSettings({ ...settings, printerId: id, formatId, paperId, spineMm: undefined })
   }
 
-  async function open(files: FileList | { name: string; arrayBuffer: () => Promise<ArrayBuffer> }[] | null) {
+  async function open(files: FileList | InputFile[] | null) {
     if (!files) return
-    // 前に開いていたファイルの表示用の資源（worker 側の文書）を手放す
-    for (const l of loaded) if ('preview' in l) l.preview.close()
+    // 前に開いていたファイルの表示用の資源（worker 側の文書や画像）を手放す
+    for (const l of loaded) if (l.kind !== 'error') l.preview.close()
     const results: Loaded[] = []
+    const images: (RasterFile & { bytes: Uint8Array; type: string })[] = []
+    const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
     for (const f of Array.from(files)) {
-      try {
-        const bytes = new Uint8Array(await f.arrayBuffer())
-        const facts = await inspectPdf(bytes)
-        const preview = openForPreview(bytes)
-        // ノンブルの検査に使う文字。取り出せなければノンブルだけ検査しない
-        const texts = await preview.pdf.then(extractTexts).catch(() => undefined)
-        results.push({ fileName: f.name, facts, preview, texts })
-      } catch (e) {
-        results.push({ fileName: f.name, error: e instanceof Error ? e.message : String(e) })
+      const bytes = new Uint8Array(await f.arrayBuffer())
+      if (isRaster(bytes)) {
+        try {
+          images.push({ name: f.name, meta: inspectRaster(bytes), bytes, type: f.type || '' })
+        } catch (e) {
+          results.push({ kind: 'error', fileName: f.name, error: message(e) })
+        }
+        continue
       }
+      if (!isPdf(bytes)) {
+        results.push({ kind: 'error', fileName: f.name, error: 'PDF・PNG・JPEG のどれでもありません' })
+        continue
+      }
+      try {
+        const facts = await inspectPdf(bytes)
+        const preview = openPdfPreview(bytes)
+        // ノンブルの検査に使う文字。取り出せなければノンブルだけ検査しない
+        const texts = await preview.pdf!.then(extractTexts).catch(() => undefined)
+        results.push({ kind: 'pdf', fileName: f.name, facts, preview, texts })
+      } catch (e) {
+        results.push({ kind: 'error', fileName: f.name, error: message(e) })
+      }
+    }
+    if (images.length) {
+      const sorted = sortByName(images)
+      const name = sorted.length === 1 ? sorted[0].name : `${sorted[0].name} 〜 ${sorted[sorted.length - 1].name}（${sorted.length} 枚）`
+      results.unshift({ kind: 'images', fileName: name, files: sorted.map(({ name: n, meta }) => ({ name: n, meta })), preview: openImagePreview(sorted) })
     }
     setLoaded(results)
   }
@@ -204,7 +244,7 @@ export default function App() {
     const dataUrl = part === 'cover' ? sampleCover : sampleBody
     const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), (c) => c.charCodeAt(0))
     const name = part === 'cover' ? '見本（A5 表紙・背幅違い）.pdf' : '見本（A5 本文・わざと不備あり）.pdf'
-    void open([{ name, arrayBuffer: async () => bytes.buffer }])
+    void open([{ name, arrayBuffer: async () => bytes.buffer as ArrayBuffer }])
   }
 
   return (
@@ -337,8 +377,9 @@ export default function App() {
       )}
 
       <label className="drop">
-        PDF をここにドロップ、または選ぶ
-        <input type="file" accept="application/pdf" multiple onChange={(e) => void open(e.target.files)} />
+        PDF、または PNG・JPEG の画像をここにドロップ、または選ぶ
+        <span className="drop-note">画像はまとめて入れると、ファイル名の順に1冊として確かめます</span>
+        <input type="file" accept="application/pdf,image/png,image/jpeg" multiple onChange={(e) => void open(e.target.files)} />
       </label>
       <p className="sample">
         手元に PDF がなければ{' '}

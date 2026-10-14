@@ -189,5 +189,21 @@
       "HY"
     ],
     "note": "本全体のページ数（表紙と口絵を含む）÷ 係数（mm）"
+  },
+  "imageFormats": {
+    "png": {
+      "value": "accepted",
+      "src": [
+        "KH"
+      ],
+      "note": "受付可能形式は PSD・PNG・PDF・Word"
+    },
+    "jpeg": {
+      "value": "accepted",
+      "src": [
+        "QA"
+      ],
+      "note": "Q&A では「PNG形式やJPG形式でも受付可能」とあるが、受付可能形式の表には JPG が載っていない"
+    }
   }
 }

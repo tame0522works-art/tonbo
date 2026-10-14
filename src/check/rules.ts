@@ -72,7 +72,9 @@ export function checkDocument(facts: DocumentFacts, opts: CheckOptions, texts?: 
   }
 
   for (const p of facts.pages) {
-    if (opts.part === 'body') checkSize(p, format, printer, cite, add)
+    if (p.sizeUnknown) {
+      // 大きさがわからない理由は、画像原稿の読み取り側で指摘している
+    } else if (opts.part === 'body') checkSize(p, format, printer, cite, add)
     else if (p.number === 1) checkCoverSize(p, format, opts, cite, add)
     checkImages(p, opts, cite, add)
     checkFonts(p, printer, cite, add)
@@ -93,8 +95,13 @@ export function checkDocument(facts: DocumentFacts, opts: CheckOptions, texts?: 
   if (opts.part === 'body') checkPageCount(facts.pages.length, format, opts, cite, add)
   if (opts.part === 'body' && texts) checkNombres(facts.pages, texts, format, printer, cite, add)
 
+  return sortFindings([...out.values()])
+}
+
+/** error → warn → info の順に並べる（同じ重さの中では見つけた順） */
+export function sortFindings(list: Finding[]): Finding[] {
   const order: Record<Level, number> = { error: 0, warn: 1, info: 2 }
-  return [...out.values()].sort((a, b) => order[a.level] - order[b.level])
+  return [...list].sort((a, b) => order[a.level] - order[b.level])
 }
 
 type Cite = (v: { src: string[] }) => Finding['sources']
@@ -271,7 +278,8 @@ function checkFonts(p: PageFacts, printer: PrinterSpec, cite: Cite, add: Add) {
 function checkPaint(p: PageFacts, opts: CheckOptions, cite: Cite, add: Add) {
   const rgbBoxes = p.images.filter((i) => i.color === 'rgb' && visible(i.bounds, p.cropBox)).map((i) => i.bounds)
   const rgb = rgbBoxes.length > 0 || p.rgbPaintOps > 0
-  const part = opts.part === 'cover' ? 'cover' : 'body'
+  // 仕様の rgb.body はスミ刷り（モノクロ）本文、rgb.cover はフルカラーの扱い。カラー本文にはフルカラーの扱いを当てる
+  const part = opts.part === 'cover' || opts.ink === 'color' ? 'cover' : 'body'
   const policy = opts.printer.rgb[part]
   if (rgb) {
     if (part === 'body' && opts.ink === 'mono') {

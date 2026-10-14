@@ -55,6 +55,8 @@ export type PageFacts = {
   spotColors: string[]
   /** 読み取れなかったもの（未対応の圧縮形式など）。検査結果に「確かめられなかった」として出す */
   unreadable: string[]
+  /** 大きさがわからない（解像度の情報がない画像原稿で、縦横比も判型に合わない）。大きさの検査をしない */
+  sizeUnknown?: boolean
 }
 
 export type DocumentFacts = {

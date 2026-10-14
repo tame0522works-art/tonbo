@@ -6,7 +6,8 @@
     "DG": "https://www.shimaya.net/howto/data-genkou.html",
     "PS": "https://www.shimaya.net/howto/ps.html",
     "BG": "https://www.shimaya.net/bungei/bungei-besic.html",
-    "SB": "https://www.shimaya.net/howto/sehaba.html"
+    "SB": "https://www.shimaya.net/howto/sehaba.html",
+    "AP": "https://www.shimaya.net/howto/application.html"
   },
   "formats": [
     {
@@ -136,5 +137,21 @@
       "SB"
     ],
     "note": "式は公開されておらず、本文ページ数で引く早見表のみ。カバーは表の値 +1mm"
+  },
+  "imageFormats": {
+    "png": {
+      "value": "unspecified",
+      "src": [
+        "AP"
+      ],
+      "note": "受け付ける形式として PSD・TIFF・EPS（Photoshop 7 以降は PSD を推奨）が挙がっており、PNG・JPEG の記載はない"
+    },
+    "jpeg": {
+      "value": "unspecified",
+      "src": [
+        "AP"
+      ],
+      "note": "受け付ける形式として PSD・TIFF・EPS（Photoshop 7 以降は PSD を推奨）が挙がっており、PNG・JPEG の記載はない"
+    }
   }
 }
