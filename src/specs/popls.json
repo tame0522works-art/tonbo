@@ -1,0 +1,33 @@
+{
+  "id": "popls",
+  "name": "ポプルス",
+  "checkedAt": "2026-10-14",
+  "sources": {
+    "KH": "https://www2.popls.co.jp/pop/genkou/kihon.html",
+    "SG": "https://www2.popls.co.jp/pop/genkou/saigo.html",
+    "QA": "https://www2.popls.co.jp/pop/genkou/q_and_a.html",
+    "ST": "https://www2.popls.co.jp/pop/book/standard.html"
+  },
+  "formats": [
+    { "id": "A5", "label": "A5", "w": 148, "h": 210, "src": ["KH"] },
+    { "id": "B5", "label": "B5", "w": 182, "h": 257, "src": ["KH"] },
+    { "id": "B6", "label": "B6", "w": 128, "h": 182, "src": ["KH"] },
+    { "id": "shinsho", "label": "新書", "w": 107, "h": 175, "src": ["KH"], "note": "新書の寸法は印刷所によって違う" },
+    { "id": "bunko", "label": "文庫", "w": 105, "h": 148, "src": ["KH"] },
+    { "id": "A4", "label": "A4", "w": 210, "h": 297, "src": ["KH"] }
+  ],
+  "bleedMm": { "value": 3, "src": ["KH"] },
+  "resolution": {
+    "color": { "value": { "recommended": 350, "acceptable": 200 }, "src": ["KH", "QA"], "note": "300 以上を推奨。200〜300 でも印刷はできる" },
+    "gray": { "value": { "recommended": 600, "acceptable": 300 }, "src": ["QA", "SG"], "note": "網点を使うなら 600 か 1200 が必須。網点のないグレーなら 300〜350 でも問題ない" },
+    "mono": { "value": { "recommended": 600 }, "src": ["KH"] }
+  },
+  "rgb": {
+    "body": { "value": "accepted", "src": ["QA"], "note": "モノクロ本文は、グレースケール・2値・RGB が混在してもよい" },
+    "cover": { "value": "accepted", "src": ["KH"], "note": "RGB（sRGB）のまま入稿するよう推奨。CMYK と混在してもよい" }
+  },
+  "pageUnit": {
+    "perfect": { "value": { "unit": 2, "min": 10, "includesCover": false, "strict": true }, "src": ["ST"], "note": "平とじは 10 ページ以上の 2 の倍数" },
+    "saddle": { "value": { "unit": 4, "min": 8, "max": 40, "includesCover": true, "strict": true }, "src": ["ST"], "note": "中とじは表紙4ページを含めて 4 の倍数、8〜40 ページ" }
+  }
+}

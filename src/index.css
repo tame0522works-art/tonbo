@@ -4,6 +4,8 @@
   --muted: #66707a;
   --line: #d6d3cb;
   --accent: #c2412d;
+  --warn: #b7791f;
+  --ok: #2f855a;
   --surface: #ffffff;
   color-scheme: light dark;
   font-family: system-ui, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
@@ -15,6 +17,8 @@
     --muted: #9aa3ad;
     --line: #353a40;
     --accent: #f07a62;
+    --warn: #d69e2e;
+    --ok: #48bb78;
     --surface: #202328;
   }
 }
@@ -61,7 +65,6 @@ footer {
 }
 section {
   margin: 32px 0;
-  overflow-x: auto;
 }
 h2 {
   font-size: 1.1rem;
@@ -86,4 +89,113 @@ td {
 footer {
   margin-top: 48px;
   font-size: 0.8rem;
+}
+.settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin: 20px 0 8px;
+  padding: 0;
+  border: 0;
+}
+.settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.settings select {
+  min-width: 9em;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 1rem;
+}
+.summary {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  background: var(--surface);
+  border-left: 4px solid var(--ok);
+}
+.summary.error {
+  border-left-color: var(--accent);
+}
+.summary.warn {
+  border-left-color: var(--warn);
+}
+.findings {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.finding {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.finding p {
+  margin: 6px 0 0;
+  line-height: 1.6;
+}
+.finding .level {
+  flex: none;
+  width: 4.5em;
+  height: fit-content;
+  padding: 2px 0;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--muted);
+}
+.finding.error .level {
+  background: var(--accent);
+}
+.finding.warn .level {
+  background: var(--warn);
+}
+.finding .pages {
+  margin-left: 10px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.sources {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.sources a {
+  margin-right: 8px;
+  color: inherit;
+}
+details {
+  margin-top: 16px;
+}
+summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+.scroll {
+  overflow-x: auto;
+}
+.sample {
+  margin: -12px 0 24px;
+  color: var(--muted);
+  text-align: center;
+}
+.sample button {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
 }

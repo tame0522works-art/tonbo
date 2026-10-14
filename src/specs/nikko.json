@@ -1,0 +1,35 @@
+{
+  "id": "nikko",
+  "name": "日光企画",
+  "checkedAt": "2026-10-14",
+  "sources": {
+    "T": "https://www.nikko-pc.com/site/home-hd-2/home-tombo/",
+    "Q": "https://www.nikko-pc.com/site/home-hd-2/home-qa/",
+    "N": "https://www.nikko-pc.com/site/home-hd-2/home-ng/",
+    "K": "https://www.nikko-pc.com/site/home-hd-2/kihon/"
+  },
+  "formats": [
+    { "id": "A5", "label": "A5", "w": 148, "h": 210, "src": ["T"], "note": "寸法はサイトに記載がないため JIS 規格の値" },
+    { "id": "B5", "label": "B5", "w": 182, "h": 257, "src": ["T"], "note": "寸法はサイトに記載がないため JIS 規格の値" },
+    { "id": "B6", "label": "B6", "w": 128, "h": 182, "src": ["T"], "note": "寸法はサイトに記載がないため JIS 規格の値" },
+    { "id": "bunko", "label": "文庫", "w": 105, "h": 148, "src": ["T"], "note": "寸法はサイトに記載がないため JIS 規格（A6）の値" }
+  ],
+  "bleedMm": { "value": 3, "src": ["Q", "T"], "note": "クリスタのトンボを使う場合は 5mm でも可" },
+  "resolution": {
+    "color": { "value": { "recommended": 350 }, "src": ["Q", "T"] },
+    "gray": { "value": { "recommended": 600 }, "src": ["Q"] },
+    "mono": { "value": { "recommended": 600 }, "src": ["Q"] }
+  },
+  "rgb": {
+    "body": { "value": "converted", "src": ["Q"], "note": "モノクロ原稿に混じったカラー画像は、日光企画でグレースケールに変換される" },
+    "cover": { "value": "converted", "src": ["Q", "N"], "note": "オフセットは RGB に対応しておらず CMYK に変換される（色の変化は了承事項）。オンデマンドの一部の用紙は疑似 RGB 印刷ができる" }
+  },
+  "fontEmbedExempt": { "value": ["Times New Roman", "Arial"], "src": ["N"], "note": "この2書体は埋め込まれていなくても不備として扱わない" },
+  "pageUnit": {
+    "perfect": {
+      "value": { "unit": 8, "byFormat": { "B5": 4 }, "includesCover": true, "strict": false },
+      "src": ["K"],
+      "note": "料金表の刻み。表にないページ数は一つ上の料金になる"
+    }
+  }
+}
