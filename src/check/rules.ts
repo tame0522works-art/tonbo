@@ -8,6 +8,7 @@
  */
 import { boxHeightMm, boxWidthMm, PT_PER_MM, type Box, type DocumentFacts, type PageFacts } from '../pdf/inspect.ts'
 import type { Format, PrinterSpec, Sourced } from '../specs/types.ts'
+import { analyzeNombres, MIN_COVERAGE, type TextItem } from './nombre.ts'
 
 export type Level = 'error' | 'warn' | 'info'
 
@@ -35,7 +36,11 @@ export type CheckOptions = {
 /** 寸法の比較で許す差（mm）。作成ソフトの丸めで 0.1mm 前後ずれるのはよくある */
 const TOLERANCE_MM = 0.5
 
-export function checkDocument(facts: DocumentFacts, opts: CheckOptions): Finding[] {
+/**
+ * texts はページごとの文字（pdf.js で取り出したもの）。ノンブルの検査に使う。
+ * 渡さなければノンブルは検査しない（Node での確認や、文字の取り出しに失敗したとき）
+ */
+export function checkDocument(facts: DocumentFacts, opts: CheckOptions, texts?: TextItem[][]): Finding[] {
   const { printer } = opts
   const format = printer.formats.find((f) => f.id === opts.formatId)
   if (!format) throw new Error(`${printer.name} に判型 ${opts.formatId} がない`)
@@ -80,6 +85,7 @@ export function checkDocument(facts: DocumentFacts, opts: CheckOptions): Finding
     }
   }
   if (opts.part === 'body') checkPageCount(facts.pages.length, format, opts, cite, add)
+  if (opts.part === 'body' && texts) checkNombres(facts.pages, texts, format, printer, cite, add)
 
   const order: Record<Level, number> = { error: 0, warn: 1, info: 2 }
   return [...out.values()].sort((a, b) => order[a.level] - order[b.level])
@@ -356,4 +362,122 @@ function checkPageCount(pages: number, format: Format, opts: CheckOptions, cite:
     detail: `${countText}で、${problems.join('。')}。${u.strict ? '白ページを足して調整してください。' : ''}${note(rule)}`,
     sources: cite(rule),
   })
+}
+
+
+/**
+ * ページの仕上がりの枠。TrimBox があればそれを、なければ用紙の中央に判型の大きさを置いたものとみなす
+ * （塗り足し込みやトンボ付きの用紙は、仕上がりが中央にある作り方が一般的なため）
+ */
+export function pageTrim(p: PageFacts, format: Format): Box {
+  if (p.trimBox) return p.trimBox
+  const turned = p.rotate === 90 || p.rotate === 270
+  const w = (turned ? format.h : format.w) * PT_PER_MM
+  const h = (turned ? format.w : format.h) * PT_PER_MM
+  const cx = (p.cropBox.x0 + p.cropBox.x1) / 2
+  const cy = (p.cropBox.y0 + p.cropBox.y1) / 2
+  return { x0: cx - w / 2, y0: cy - h / 2, x1: cx + w / 2, y1: cy + h / 2 }
+}
+
+function checkNombres(pages: PageFacts[], texts: TextItem[][], format: Format, printer: PrinterSpec, cite: Cite, add: Add) {
+  if (pages.length < 2) return
+  const rule = printer.nombre
+  const r = rule.value
+  const sources = cite(rule)
+  const trims = pages.map((p) => pageTrim(p, format))
+  const a = analyzeNombres(pages.map((p, i) => ({ number: p.number, trim: trims[i], items: texts[i] ?? [] })))
+  if (a.coverage < MIN_COVERAGE || a.offset === null) {
+    add({
+      level: r.required ? 'warn' : 'info',
+      code: 'nombre-undetectable',
+      title: r.required ? 'ノンブルを確かめられませんでした' : 'ノンブルは見つかりませんでした',
+      detail:
+        (r.required
+          ? 'ページの余白に番号の文字が見つかりませんでした。文字を画像にしている（ラスタライズした）原稿は読み取れないので、全ページに入っているか目で確かめてください。'
+          : '') + note(rule),
+      sources,
+    })
+    return
+  }
+  a.pages.forEach((pg, i) => {
+    if (pg.found) {
+      const b = pg.found.box
+      const trim = trims[i]
+      const label = String(pg.found.value)
+      if (r.insideTrim && (b.x0 < trim.x0 || b.y0 < trim.y0 || b.x1 > trim.x1 || b.y1 > trim.y1)) {
+        add(
+          {
+            level: 'warn',
+            code: 'nombre-outside',
+            title: 'ノンブルが仕上がりの外（塗り足し）にかかっています',
+            detail: `断裁で切れてしまいます。仕上がりの内側に入れてください。${note(rule)}`,
+            sources,
+          },
+          pg.number,
+          b,
+          label,
+        )
+      }
+      // 文字の高さは書体の枠から求めた概算なので、少し許す
+      if (r.minHeightMm !== undefined && pg.found.heightMm < r.minHeightMm - 0.2) {
+        add(
+          {
+            level: 'warn',
+            code: 'nombre-small',
+            title: `ノンブルの文字が ${r.minHeightMm}mm より小さいです`,
+            detail: `文字の大きさから見た高さが ${r.minHeightMm}mm に届いていません。${note(rule)}`,
+            sources,
+          },
+          pg.number,
+          b,
+          label,
+        )
+      }
+      if (r.noKanji && pg.found.kanji) {
+        add(
+          { level: 'error', code: 'nombre-kanji', title: 'ノンブルに漢数字が使われています', detail: `算用数字（1, 2, 3…）にしてください。${note(rule)}`, sources },
+          pg.number,
+          b,
+          '漢数字',
+        )
+      }
+      return
+    }
+    if (pg.candidates.length) {
+      const c = pg.candidates[0]
+      add(
+        {
+          level: 'warn',
+          code: 'nombre-sequence',
+          title: 'ノンブルの番号が並びと合わないページがあります',
+          detail: '前後のページから見て、入っているべき番号と違う番号が見つかりました。番号の飛びや重なり、ページの順番の入れ替わりがないか確かめてください。',
+          sources: [],
+        },
+        pg.number,
+        c.box,
+        `${c.value}（${pg.expected} のはず）`,
+      )
+      return
+    }
+    add(
+      {
+        level: r.required ? 'error' : 'info',
+        code: 'nombre-missing',
+        title: r.required ? 'ノンブルが見つからないページがあります' : 'ノンブルのないページがあります',
+        detail: `前後のページから見て番号が入っているはずのページで、余白に番号が見つかりませんでした。白ページにも入れる必要があります。${note(rule)}`,
+        sources,
+      },
+      pg.number,
+    )
+  })
+  const first = a.pages[0].expected
+  if (r.oddStart && first !== null && first % 2 === 0) {
+    add({
+      level: 'warn',
+      code: 'nombre-odd-start',
+      title: `ノンブルが偶数（${first}）から始まっています`,
+      detail: `${printer.name}は奇数ページから始めることを求めています。${note(rule)}`,
+      sources,
+    })
+  }
 }

@@ -22,19 +22,24 @@ const image = b.add(`<< /Type /XObject /Subtype /Image /Width ${px} /Height ${px
 // 埋め込まれていない和文フォント（文字は表示の確認用に欧文だけ書く）
 const font = b.add('<< /Type /Font /Subtype /TrueType /BaseFont /MS-Mincho /FirstChar 32 /LastChar 126 /Encoding /WinAnsiEncoding >>')
 
+// ノンブルは1・2ページにだけ入れ、3ページ目は入れ忘れたことにする（仕上がりの下端から 8mm、左右の中央）
+const nombre = (n: number) => `0 g BT /F1 9 Tf ${mm(3 + 72)} ${mm(3 + 8)} Td (${n}) Tj ET`
+
 const bleedW = mm(154)
 const bleedH = mm(216)
 const res = `<< /XObject << /Im0 ${image} 0 R >> /Font << /F1 ${font} 0 R >> >>`
 const p1 = b.add(
   `<< /Type /Page /Parent ${pages} 0 R /MediaBox [0 0 ${bleedW} ${bleedH}] /Resources ${res} /Contents ${b.add(
     '<< >>',
-    `q ${mm(80)} 0 0 ${mm(80)} ${mm(37)} ${mm(90)} cm /Im0 Do Q\n0 g BT /F1 14 Tf ${mm(37)} ${mm(60)} Td (tonbo sample - page 1) Tj ET`,
+    `q ${mm(80)} 0 0 ${mm(80)} ${mm(37)} ${mm(90)} cm /Im0 Do Q\n0 g BT /F1 14 Tf ${mm(37)} ${mm(60)} Td (tonbo sample - page 1) Tj ET
+${nombre(1)}`,
   )} 0 R >>`,
 )
 const p2 = b.add(
   `<< /Type /Page /Parent ${pages} 0 R /MediaBox [0 0 ${bleedW} ${bleedH}] /Resources ${res} /Contents ${b.add(
     '<< >>',
-    `0.9 0.2 0.3 rg ${mm(20)} ${mm(150)} ${mm(114)} ${mm(30)} re f\n0 g BT /F1 14 Tf ${mm(20)} ${mm(120)} Td (RGB red box above) Tj ET`,
+    `0.9 0.2 0.3 rg ${mm(20)} ${mm(150)} ${mm(114)} ${mm(30)} re f\n0 g BT /F1 14 Tf ${mm(20)} ${mm(120)} Td (RGB red box above) Tj ET
+${nombre(2)}`,
   )} 0 R >>`,
 )
 // 3ページ目だけ塗り足しのない大きさ

@@ -137,5 +137,18 @@
       ],
       "note": "料金表の刻み。表にないページ数は一つ上の料金になる"
     }
+  },
+  "nombre": {
+    "value": {
+      "required": true,
+      "oddStart": true,
+      "noKanji": true,
+      "insideTrim": true
+    },
+    "src": [
+      "Q",
+      "N"
+    ],
+    "note": "全ページに必須。仕上がりサイズの内側に入れ、奇数ページから始める。漢数字は不可"
   }
 }

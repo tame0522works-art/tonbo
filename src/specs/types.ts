@@ -38,6 +38,18 @@ export type PageUnit = {
   strict: boolean
 }
 
+export type NombreRule = {
+  required: boolean
+  /** 最初のページを奇数で始める */
+  oddStart?: boolean
+  /** 漢数字は不可 */
+  noKanji?: boolean
+  /** 仕上がりの内側に入れる（塗り足し部分は不可） */
+  insideTrim?: boolean
+  /** 文字の高さの下限（mm） */
+  minHeightMm?: number
+}
+
 export type PrinterSpec = {
   id: string
   name: string
@@ -55,4 +67,5 @@ export type PrinterSpec = {
   /** 埋め込まれていなくても不備としないと明記されたフォント（名前の一部で照合する） */
   fontEmbedExempt?: Sourced<string[]>
   pageUnit: { perfect?: Sourced<PageUnit>; saddle?: Sourced<PageUnit> }
+  nombre: Sourced<NombreRule>
 }

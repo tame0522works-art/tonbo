@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { PagePreview } from './PagePreview.tsx'
 import { openForPreview, type Preview } from './preview.ts'
+import type { TextItem } from './check/nombre.ts'
 import { checkDocument, type CheckOptions, type Finding } from './check/rules.ts'
+import { extractTexts } from './check/text.ts'
 import { boxHeightMm, boxWidthMm, inspectPdf, type DocumentFacts, type PageFacts } from './pdf/inspect.ts'
 import sampleDataUrl from './samples/sample-a5-ng.pdf?inline'
 import { PRINTERS } from './specs/index.ts'
 
-type Loaded = { fileName: string; facts: DocumentFacts; preview: Preview } | { fileName: string; error: string }
+type Loaded = { fileName: string; facts: DocumentFacts; preview: Preview; texts?: TextItem[][] } | { fileName: string; error: string }
 type Settings = Omit<CheckOptions, 'printer'> & { printerId: string }
 
 const LEVEL_LABEL = { error: '要修正', warn: '注意', info: '参考' } as const
@@ -93,7 +95,7 @@ function PageRow({ p }: { p: PageFacts }) {
 
 function Result({ l, settings }: { l: Loaded; settings: Settings }) {
   const printer = PRINTERS.find((p) => p.id === settings.printerId)!
-  const findings = useMemo(() => ('facts' in l ? checkDocument(l.facts, { ...settings, printer }) : []), [l, settings, printer])
+  const findings = useMemo(() => ('facts' in l ? checkDocument(l.facts, { ...settings, printer }, l.texts) : []), [l, settings, printer])
   if ('error' in l) {
     return (
       <section>
@@ -168,7 +170,10 @@ export default function App() {
       try {
         const bytes = new Uint8Array(await f.arrayBuffer())
         const facts = await inspectPdf(bytes)
-        results.push({ fileName: f.name, facts, preview: openForPreview(bytes) })
+        const preview = openForPreview(bytes)
+        // ノンブルの検査に使う文字。取り出せなければノンブルだけ検査しない
+        const texts = await preview.pdf.then(extractTexts).catch(() => undefined)
+        results.push({ fileName: f.name, facts, preview, texts })
       } catch (e) {
         results.push({ fileName: f.name, error: e instanceof Error ? e.message : String(e) })
       }

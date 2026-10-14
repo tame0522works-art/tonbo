@@ -51,6 +51,8 @@ for (const p of PRINTERS) {
     assert.ok(u!.value.unit > 0)
     for (const fid of Object.keys(u!.value.byFormat ?? {})) assert.ok(p.formats.some((f) => f.id === fid), `${where} のページ単位に知らない判型 ${fid}`)
   }
+  sourced(p.nombre, 'ノンブル')
+  assert.equal(typeof p.nombre.value.required, 'boolean')
   for (const k of Object.keys(p.sources)) assert.ok(used.has(k), `${where} の出典 ${k} がどこからも使われていない`)
 }
 

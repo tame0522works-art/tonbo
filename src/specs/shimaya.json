@@ -8,22 +8,120 @@
     "BG": "https://www.shimaya.net/bungei/bungei-besic.html"
   },
   "formats": [
-    { "id": "A5", "label": "A5", "w": 148, "h": 210, "src": ["DG"] },
-    { "id": "B5", "label": "B5", "w": 182, "h": 257, "src": ["DG"] },
-    { "id": "B6", "label": "B6", "w": 128, "h": 182, "src": ["DG"] },
-    { "id": "A4", "label": "A4", "w": 210, "h": 297, "src": ["DG"] },
-    { "id": "shinsho", "label": "新書", "w": 107, "h": 172, "src": ["BG"], "note": "文芸セット" },
-    { "id": "bunko", "label": "文庫", "w": 105, "h": 148, "src": ["BG"], "note": "文芸セット" }
+    {
+      "id": "A5",
+      "label": "A5",
+      "w": 148,
+      "h": 210,
+      "src": [
+        "DG"
+      ]
+    },
+    {
+      "id": "B5",
+      "label": "B5",
+      "w": 182,
+      "h": 257,
+      "src": [
+        "DG"
+      ]
+    },
+    {
+      "id": "B6",
+      "label": "B6",
+      "w": 128,
+      "h": 182,
+      "src": [
+        "DG"
+      ]
+    },
+    {
+      "id": "A4",
+      "label": "A4",
+      "w": 210,
+      "h": 297,
+      "src": [
+        "DG"
+      ]
+    },
+    {
+      "id": "shinsho",
+      "label": "新書",
+      "w": 107,
+      "h": 172,
+      "src": [
+        "BG"
+      ],
+      "note": "文芸セット"
+    },
+    {
+      "id": "bunko",
+      "label": "文庫",
+      "w": 105,
+      "h": 148,
+      "src": [
+        "BG"
+      ],
+      "note": "文芸セット"
+    }
   ],
-  "bleedMm": { "value": 3, "src": ["DG"] },
+  "bleedMm": {
+    "value": 3,
+    "src": [
+      "DG"
+    ]
+  },
   "resolution": {
-    "color": { "value": { "recommended": 350 }, "src": ["PS", "DG"] },
-    "gray": { "value": { "recommended": 350 }, "src": ["DG"], "note": "350〜600。ブラシ塗りは 600 が適正" },
-    "mono": { "value": { "recommended": 600 }, "src": ["DG"], "note": "600〜1200" }
+    "color": {
+      "value": {
+        "recommended": 350
+      },
+      "src": [
+        "PS",
+        "DG"
+      ]
+    },
+    "gray": {
+      "value": {
+        "recommended": 350
+      },
+      "src": [
+        "DG"
+      ],
+      "note": "350〜600。ブラシ塗りは 600 が適正"
+    },
+    "mono": {
+      "value": {
+        "recommended": 600
+      },
+      "src": [
+        "DG"
+      ],
+      "note": "600〜1200"
+    }
   },
   "rgb": {
-    "body": { "value": "unspecified", "src": [] },
-    "cover": { "value": "converted", "src": ["PS"], "note": "CMYK での入稿を依頼。RGB はしまや出版で CMYK に変換するため色が変わる" }
+    "body": {
+      "value": "unspecified",
+      "src": []
+    },
+    "cover": {
+      "value": "converted",
+      "src": [
+        "PS"
+      ],
+      "note": "CMYK での入稿を依頼。RGB はしまや出版で CMYK に変換するため色が変わる"
+    }
   },
-  "pageUnit": {}
+  "pageUnit": {},
+  "nombre": {
+    "value": {
+      "required": true,
+      "insideTrim": true
+    },
+    "src": [
+      "DG"
+    ],
+    "note": "全ページに必須。通常は仕上がりから 3〜5mm 内側に入れる。隠しノンブルも可"
+  }
 }

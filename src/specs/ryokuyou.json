@@ -8,28 +8,153 @@
     "PS": "https://www.ryokuyou.co.jp/doujin/manual/photoshop.html",
     "F41": "https://www.ryokuyou.co.jp/doujin/faq/faq41.html",
     "F98": "https://www.ryokuyou.co.jp/doujin/faq/faq98.html",
-    "M01": "https://www.ryokuyou.co.jp/doujin/set/m01.html"
+    "M01": "https://www.ryokuyou.co.jp/doujin/set/m01.html",
+    "F61": "https://www.ryokuyou.co.jp/doujin/faq/faq61.html"
   },
   "formats": [
-    { "id": "A5", "label": "A5", "w": 148, "h": 210, "src": ["B"] },
-    { "id": "B5", "label": "B5", "w": 182, "h": 257, "src": ["B"] },
-    { "id": "B6", "label": "B6", "w": 128, "h": 182, "src": ["B"] },
-    { "id": "shinsho", "label": "新書", "w": 114, "h": 182, "src": ["B"] },
-    { "id": "bunko", "label": "文庫", "w": 105, "h": 148, "src": ["B"] },
-    { "id": "A4", "label": "A4", "w": 210, "h": 297, "src": ["A4"], "note": "A4 オールカラーセットのみ" }
+    {
+      "id": "A5",
+      "label": "A5",
+      "w": 148,
+      "h": 210,
+      "src": [
+        "B"
+      ]
+    },
+    {
+      "id": "B5",
+      "label": "B5",
+      "w": 182,
+      "h": 257,
+      "src": [
+        "B"
+      ]
+    },
+    {
+      "id": "B6",
+      "label": "B6",
+      "w": 128,
+      "h": 182,
+      "src": [
+        "B"
+      ]
+    },
+    {
+      "id": "shinsho",
+      "label": "新書",
+      "w": 114,
+      "h": 182,
+      "src": [
+        "B"
+      ]
+    },
+    {
+      "id": "bunko",
+      "label": "文庫",
+      "w": 105,
+      "h": 148,
+      "src": [
+        "B"
+      ]
+    },
+    {
+      "id": "A4",
+      "label": "A4",
+      "w": 210,
+      "h": 297,
+      "src": [
+        "A4"
+      ],
+      "note": "A4 オールカラーセットのみ"
+    }
   ],
-  "bleedMm": { "value": 3, "src": ["B"], "note": "端に絵柄のない小説は不要" },
+  "bleedMm": {
+    "value": 3,
+    "src": [
+      "B"
+    ],
+    "note": "端に絵柄のない小説は不要"
+  },
   "resolution": {
-    "color": { "value": { "recommended": 350 }, "src": ["PS"] },
-    "gray": { "value": { "recommended": 600, "acceptable": 300 }, "src": ["PS"], "note": "300 でも可だが若干粗くなる" },
-    "mono": { "value": { "recommended": 600 }, "src": ["PS"], "note": "600 か 1200" }
+    "color": {
+      "value": {
+        "recommended": 350
+      },
+      "src": [
+        "PS"
+      ]
+    },
+    "gray": {
+      "value": {
+        "recommended": 600,
+        "acceptable": 300
+      },
+      "src": [
+        "PS"
+      ],
+      "note": "300 でも可だが若干粗くなる"
+    },
+    "mono": {
+      "value": {
+        "recommended": 600
+      },
+      "src": [
+        "PS"
+      ],
+      "note": "600 か 1200"
+    }
   },
   "rgb": {
-    "body": { "value": "converted", "src": ["B"], "note": "スミ刷りの本文はグレースケールかモノクロ2階調で作る。RGB はグレースケールに変換される" },
-    "cover": { "value": "accepted", "src": ["F98", "F41"], "note": "RGB を推奨。プロファイルが埋め込まれていなければ AdobeRGB(1998) として扱われる" }
+    "body": {
+      "value": "converted",
+      "src": [
+        "B"
+      ],
+      "note": "スミ刷りの本文はグレースケールかモノクロ2階調で作る。RGB はグレースケールに変換される"
+    },
+    "cover": {
+      "value": "accepted",
+      "src": [
+        "F98",
+        "F41"
+      ],
+      "note": "RGB を推奨。プロファイルが埋め込まれていなければ AdobeRGB(1998) として扱われる"
+    }
   },
   "pageUnit": {
-    "perfect": { "value": { "unit": 2, "includesCover": false, "strict": true }, "src": ["M01"], "note": "無線とじは 2 ページ単位" },
-    "saddle": { "value": { "unit": 4, "includesCover": true, "strict": true }, "src": ["M01"], "note": "中とじは表紙4ページを含めて 4 ページ単位" }
+    "perfect": {
+      "value": {
+        "unit": 2,
+        "includesCover": false,
+        "strict": true
+      },
+      "src": [
+        "M01"
+      ],
+      "note": "無線とじは 2 ページ単位"
+    },
+    "saddle": {
+      "value": {
+        "unit": 4,
+        "includesCover": true,
+        "strict": true
+      },
+      "src": [
+        "M01"
+      ],
+      "note": "中とじは表紙4ページを含めて 4 ページ単位"
+    }
+  },
+  "nombre": {
+    "value": {
+      "required": true,
+      "insideTrim": true,
+      "minHeightMm": 2
+    },
+    "src": [
+      "B",
+      "F61"
+    ],
+    "note": "全ページに必須。字の高さ 2mm 以上で、黒（K100%）で入れる。隠しノンブルも可（仕上がり線より内側）"
   }
 }

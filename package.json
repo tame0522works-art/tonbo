@@ -11,10 +11,11 @@
     "preview": "vite preview",
     "check:reader": "tsx tools/check-reader.ts",
     "check:inspect": "tsx tools/check-inspect.ts",
-    "check": "npm run check:reader && npm run check:inspect && npm run check:specs && npm run check:rules",
+    "check": "npm run check:reader && npm run check:inspect && npm run check:specs && npm run check:rules && npm run check:nombre",
     "check:specs": "tsx tools/check-specs.ts",
     "check:rules": "tsx tools/check-rules.ts",
-    "samples": "tsx tools/samples.ts"
+    "samples": "tsx tools/samples.ts",
+    "check:nombre": "tsx tools/check-nombre.ts"
   },
   "dependencies": {
     "pdfjs-dist": "^6.4.299",
