@@ -53,6 +53,8 @@ for (const p of PRINTERS) {
   }
   sourced(p.nombre, 'ノンブル')
   sourced(p.spine, '背幅')
+  sourced(p.spread, '見開き')
+  assert.ok(['single-required', 'unspecified'].includes(p.spread.value))
   for (const [k, v] of Object.entries(p.imageFormats)) {
     // 記載なし（unspecified）でも、どのページを見て記載がないと判断したかを出典に残す
     cite(v.src, `画像形式（${k}）`)

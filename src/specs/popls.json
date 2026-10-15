@@ -206,5 +206,9 @@
       ],
       "note": "Q&A では「PNG形式やJPG形式でも受付可能」とあるが、受付可能形式の表には JPG が載っていない"
     }
+  },
+  "spread": {
+    "value": "unspecified",
+    "src": []
   }
 }

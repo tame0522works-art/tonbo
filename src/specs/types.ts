@@ -92,4 +92,6 @@ export type PrinterSpec = {
   nombre: Sourced<NombreRule>
   spine: Sourced<SpineRule>
   imageFormats: { png: Sourced<ImageFormatPolicy>; jpeg: Sourced<ImageFormatPolicy> }
+  /** 本文を見開きで書き出した PDF の扱い。single-required は単ページで書き出すよう求めている */
+  spread: Sourced<'single-required' | 'unspecified'>
 }

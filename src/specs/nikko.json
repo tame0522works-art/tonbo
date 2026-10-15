@@ -216,5 +216,9 @@
       ],
       "note": "推奨は PSD・TIFF・PDF・ai。JPG・PNG・BMP も印刷はできるが推奨しない"
     }
+  },
+  "spread": {
+    "value": "unspecified",
+    "src": []
   }
 }

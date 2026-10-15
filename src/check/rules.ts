@@ -72,9 +72,14 @@ export function checkDocument(facts: DocumentFacts, opts: CheckOptions, texts?: 
   }
 
   const coverSeparate = opts.part === 'cover' && checkCoverPages(facts.pages, format, printer, add)
+  // 本文の見開きのページ（幅が判型のほぼ2倍）。ページ数は見開きを2ページと数える
+  const spreads = new Set(opts.part === 'body' ? facts.pages.filter((p) => !p.sizeUnknown && isSpread(p, format, printer.bleedMm.value)).map((p) => p.number) : [])
+  const pageCount = facts.pages.length + spreads.size
   for (const p of facts.pages) {
     if (p.sizeUnknown) {
       // 大きさがわからない理由は、画像原稿の読み取り側で指摘している
+    } else if (opts.part === 'body' && spreads.has(p.number)) {
+      addSpread(p, format, printer, cite, add)
     } else if (opts.part === 'body') checkSize(p, format, printer, cite, add)
     else if (p.number === 1 && !coverSeparate) checkCoverSize(p, format, opts, cite, add)
     checkImages(p, opts, cite, add)
@@ -93,8 +98,16 @@ export function checkDocument(facts: DocumentFacts, opts: CheckOptions, texts?: 
       )
     }
   }
-  if (opts.part === 'body') checkPageCount(facts.pages.length, format, opts, cite, add)
-  if (opts.part === 'body' && texts) checkNombres(facts.pages, texts, format, printer, cite, add)
+  if (opts.part === 'body') checkPageCount(pageCount, format, opts, cite, add)
+  if (opts.part === 'body' && texts && spreads.size > 0) {
+    add({
+      level: 'info',
+      code: 'nombre-spread',
+      title: '見開きのページがあるため、ノンブルは確かめていません',
+      detail: '見開きのページには番号が2つ並ぶので、ページの順番との照合ができません。単ページで書き出した PDF なら確かめられます。',
+      sources: [],
+    })
+  } else if (opts.part === 'body' && texts) checkNombres(facts.pages, texts, format, printer, cite, add)
 
   return sortFindings([...out.values()])
 }
@@ -673,4 +686,37 @@ function checkCoverPages(pages: PageFacts[], format: Format, printer: PrinterSpe
     sources: [],
   })
   return false
+}
+
+/**
+ * 本文を見開き（2ページ分を1枚）で書き出したページか。幅が判型のほぼ2倍で、高さが判型どおりのもの。
+ * 仕上がりのまま・塗り足し込み（外周だけに塗り足し）・TrimBox のどれでも見分ける
+ */
+function isSpread(p: PageFacts, format: Format, bleed: number): boolean {
+  if (p.trimBox) {
+    const [tw, th] = size(p.trimBox, p.rotate)
+    return near(tw, format.w * 2) && near(th, format.h)
+  }
+  const [w, h] = size(p.cropBox, p.rotate)
+  return (near(w, format.w * 2) && near(h, format.h)) || (near(w, format.w * 2 + bleed * 2) && near(h, format.h + bleed * 2))
+}
+
+function addSpread(p: PageFacts, format: Format, printer: PrinterSpec, cite: Cite, add: Add) {
+  const rule = printer.spread
+  const required = rule.value === 'single-required'
+  add(
+    {
+      level: required ? 'error' : 'warn',
+      code: 'spread',
+      title: '見開きで書き出されたページがあります',
+      detail:
+        `幅が${format.label}のほぼ2倍で、2ページ分を1枚にした見開きのページのようです（ページ数は見開きを2ページと数えています）。` +
+        (required
+          ? `${printer.name}は単ページで書き出すよう求めています。書き出しの設定で「見開き」を外してください。${note(rule)}`
+          : `${printer.name}のサイトには見開きでの入稿についての記載がないので、見開きのまま入稿してよいかを印刷所に確かめるか、単ページで書き出し直してください。`),
+      sources: cite(rule),
+    },
+    p.number,
+    p.cropBox,
+  )
 }

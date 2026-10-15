@@ -25,6 +25,10 @@ const image = (over: Partial<ImagePlacement>): ImagePlacement => ({
 })
 const opts = (over: Partial<CheckOptions> = {}): CheckOptions => ({ printer: spec('ryokuyou'), formatId: 'A5', part: 'body', ink: 'mono', binding: 'perfect', ...over })
 const codes = (d: DocumentFacts, o = opts()) => checkDocument(d, o).map((f) => f.code)
+const codesOf = (d: DocumentFacts, o: CheckOptions, prefix: string) =>
+  checkDocument(d, o)
+    .filter((f) => f.code.startsWith(prefix))
+    .map((f) => [f.code, f.level])
 
 // 何も問題のない A5 の本文（塗り足し込み 154×216mm、偶数ページ）では指摘が出ない
 assert.deepEqual(codes(doc([page(1), page(2)])), [])
@@ -188,6 +192,29 @@ assert.deepEqual(codes(doc(nikkoShinsho), opts({ printer: spec('nikko'), formatI
   assert.deepEqual(codes(doc([sized(1, 308.7, 216), sized(2, 154, 216)]), coverOpts), ['cover-extra-pages'])
   // 1ページ目の背幅が違えば、その指摘も出る
   assert.deepEqual(codes(doc([sized(1, 305.7, 216), sized(2, 154, 216)]), coverOpts), ['cover-spine', 'cover-extra-pages'])
+}
+
+// 見開きで書き出した本文（A5 の見開き = 296×210、塗り足し込みなら外周だけで 302×216）
+{
+  const spread = (n: number, over: Partial<PageFacts> = {}) => page(n, { mediaBox: box(302, 216), cropBox: box(302, 216), ...over })
+  // 緑陽社は単ページを求めているので要修正。見開き2枚 = 4ページと数えるので、ページ数の単位（2）には合う
+  const r = checkDocument(doc([spread(1), spread(2)]), opts())
+  assert.deepEqual(r.map((f) => [f.code, f.level, f.pages]), [['spread', 'error', [1, 2]]])
+  assert.ok(r[0].sources.some((s) => s.url.includes('indesign')))
+  // 記載のない印刷所では注意にとどめる
+  assert.deepEqual(codesOf(doc([spread(1), spread(2)]), opts({ printer: spec('nikko') }), 'spread'), [['spread', 'warn']])
+  // 単ページの扉 + 見開き2枚 = 5ページ → 2の倍数でない
+  assert.ok(codes(doc([page(1), spread(2), spread(3)])).includes('page-unit'))
+  // 仕上がりのままの見開きと、TrimBox で仕上がりを示した見開きも見分ける
+  assert.deepEqual(codes(doc([spread(1, { mediaBox: box(296, 210), cropBox: box(296, 210) }), spread(2)])), ['spread'])
+  assert.deepEqual(codes(doc([spread(1, { trimBox: box(296, 210, 3) }), spread(2)])), ['spread'])
+  // 見開きがあるとノンブルは照合できないので、確かめていないことを伝える
+  assert.deepEqual(
+    checkDocument(doc([spread(1), spread(2)]), opts(), [[], []]).map((f) => f.code),
+    ['spread', 'nombre-spread'],
+  )
+  // 表紙（表4・背・表1）は横長でも見開きの本文とは扱わない
+  assert.ok(!codes(doc([spread(1)]), opts({ part: 'cover', paperId: 'jouhou90', bodyPages: 100 })).includes('spread'))
 }
 
 console.log('check:rules ok')

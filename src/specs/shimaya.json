@@ -153,5 +153,9 @@
       ],
       "note": "受け付ける形式として PSD・TIFF・EPS（Photoshop 7 以降は PSD を推奨）が挙がっており、PNG・JPEG の記載はない"
     }
+  },
+  "spread": {
+    "value": "unspecified",
+    "src": []
   }
 }

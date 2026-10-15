@@ -10,7 +10,8 @@
     "F98": "https://www.ryokuyou.co.jp/doujin/faq/faq98.html",
     "M01": "https://www.ryokuyou.co.jp/doujin/set/m01.html",
     "F61": "https://www.ryokuyou.co.jp/doujin/faq/faq61.html",
-    "SH": "https://www.ryokuyou.co.jp/doujin/sehaba"
+    "SH": "https://www.ryokuyou.co.jp/doujin/sehaba",
+    "ID": "https://www.ryokuyou.co.jp/doujin/manual/indesign.html"
   },
   "formats": [
     {
@@ -253,5 +254,13 @@
       ],
       "note": "PSD（推奨）・TIFF・PNG・JPG・EPS を受け付ける"
     }
+  },
+  "spread": {
+    "value": "single-required",
+    "src": [
+      "ID",
+      "B"
+    ],
+    "note": "見開きではなく、ページ単位（単ページ）で書き出す"
   }
 }
