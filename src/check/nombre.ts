@@ -5,6 +5,7 @@
  * 探し方:
  * - 仕上がりの端から MARGIN_MM 以内にある「数字だけの文字列」を候補にする（本文中の数字は長い文字列の一部なので拾わない）
  * - 「候補の番号 − ページの順番」の差で最も多いものを基準にし、各ページに「順番 + 差」の候補があるかを見る
+ * - 番号が合わないページでは、ほかのページのノンブルと同じ高さにある候補だけを「番号違い」の手がかりにする
  * - 文字を画像にした原稿（漫画など）は文字が取れない。半分以上のページで候補がなければ「確かめられない」として扱う
  */
 import { PT_PER_MM, type Box } from '../pdf/inspect.ts'
@@ -28,6 +29,8 @@ export type NombreAnalysis = {
 const MARGIN_MM = 25
 /** 塗り足しに少しはみ出したノンブルも見つけて「はみ出し」と伝えるため、仕上がりの外側もこれだけ見る */
 const OUTSIDE_MM = 6
+/** 番号が合わなかったページで、ほかのページのノンブルと同じ高さとみなす差（mm） */
+const SAME_HEIGHT_MM = 5
 /** 候補が見つかったページがこれ未満の割合なら、文字が画像になっているとみなす */
 export const MIN_COVERAGE = 0.5
 
@@ -95,12 +98,22 @@ export function analyzeNombres(pages: NombrePage[]): NombreAnalysis {
   const coverage = pages.length ? withAny / pages.length : 0
   // 1ページだけの一致は偶然の数字かもしれないので、2ページ以上で一致したときだけ基準にする
   if (best < Math.min(2, pages.length)) offset = null
-  return {
-    offset,
-    coverage,
-    pages: pages.map((p, i) => {
-      const expected = offset === null ? null : i + 1 + offset
-      return { number: p.number, expected, found: cands[i].find((c) => c.value === expected), candidates: cands[i] }
-    }),
+  const result = pages.map((p, i) => {
+    const expected = offset === null ? null : i + 1 + offset
+    return { number: p.number, expected, found: cands[i].find((c) => c.value === expected), candidates: cands[i] }
+  })
+  // ノンブルはどのページでもほぼ同じ高さに置く。番号が合ったページの高さを集め、合わなかったページでは
+  // その高さの近くにある候補だけを「番号違い」の手がかりにする。目次の数字（ノンブルより内側の高さに並ぶ）を
+  // ノンブルと取り違えて「番号が並びと合わない」と出さないため
+  const heights = result.flatMap((r, i) => (r.found ? [centerY(r.found.box) - pages[i].trim.y0] : []))
+  if (heights.length) {
+    const tolerance = SAME_HEIGHT_MM * PT_PER_MM
+    result.forEach((r, i) => {
+      if (r.found) return
+      r.candidates = r.candidates.filter((c) => heights.some((h) => Math.abs(centerY(c.box) - pages[i].trim.y0 - h) <= tolerance))
+    })
   }
+  return { offset, coverage, pages: result }
 }
+
+const centerY = (b: Box) => (b.y0 + b.y1) / 2

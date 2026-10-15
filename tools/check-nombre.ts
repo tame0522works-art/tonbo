@@ -69,6 +69,23 @@ function pageText(n: number, items: TextItem[]) {
   assert.equal(a.offset, null)
 }
 
+{
+  // 目次のページ: ノンブルはなく、右の余白近くに章の開始ページ（12・25・52）が並ぶ。
+  // 目次の数字はノンブルと高さが違うので「番号違い」にせず、「ノンブルが見つからない」とする
+  const toc = [text('12', 140, 150), text('25', 140, 140), text('52', 140, 130)]
+  const a = analyzeNombres([
+    pageText(1, [text('1', 70, 8)]),
+    pageText(2, [text('2', 70, 8)]),
+    pageText(3, toc),
+    pageText(4, [text('4', 70, 8)]),
+  ])
+  assert.equal(a.offset, 0)
+  assert.deepEqual(a.pages[2].candidates, [], '目次の数字は候補から外れる')
+  // ノンブルと同じ高さに違う番号があれば、今までどおり「番号違い」の手がかりにする
+  const b = analyzeNombres([pageText(1, [text('1', 70, 8)]), pageText(2, [text('2', 70, 8)]), pageText(3, [...toc, text('9', 70, 9)]), pageText(4, [text('4', 70, 8)])])
+  assert.deepEqual(b.pages[2].candidates.map((c) => c.value), [9])
+}
+
 // --- 印刷所ごとの判定 ---
 const spec = (id: string) => PRINTERS.find((p) => p.id === id)!
 const media = box(154, 216)
@@ -86,6 +103,11 @@ for (const id of ['nikko', 'ryokuyou', 'popls', 'shimaya']) assert.deepEqual(nom
 const gap = [[text('1', 70, 8)], [text('2', 70, 8)], [], [text('4', 70, 8)]]
 assert.deepEqual(nombreCodes('ryokuyou', gap), [['nombre-missing', 'error', [3]]])
 assert.deepEqual(nombreCodes('popls', gap), [['nombre-missing', 'info', [3]]], 'ポプルスはノンブル不要')
+// 目次のページ（ノンブルなし、右の余白に章の開始ページ）は「番号違い」ではなく「見つからない」
+assert.deepEqual(
+  nombreCodes('ryokuyou', [[text('1', 70, 8)], [text('2', 70, 8)], [text('12', 140, 150), text('52', 140, 130)], [text('4', 70, 8)]]),
+  [['nombre-missing', 'error', [3]]],
+)
 
 // 日光企画: 偶数始まり・漢数字・塗り足しへのはみ出し
 assert.deepEqual(nombreCodes('nikko', [2, 3, 4, 5].map((n) => [text(String(n), 70, 8)])), [['nombre-odd-start', 'warn', []]])
