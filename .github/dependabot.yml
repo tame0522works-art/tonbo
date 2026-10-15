@@ -11,6 +11,11 @@ updates:
       time: '09:00'
       timezone: Asia/Tokyo
     open-pull-requests-limit: 5
+    ignore:
+      # 手元と CI で動かしている Node.js は 24。型定義だけを先の版に上げると、24 にない機能を使っても
+      # 型検査で気づけなくなるので、Node.js の版を上げるときに合わせて上げる
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     groups:
       minor-and-patch:
         update-types: [minor, patch]

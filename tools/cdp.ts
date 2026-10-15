@@ -120,16 +120,27 @@ export class Browser {
       ...(process.platform === 'linux' ? ['--no-sandbox'] : []),
       'about:blank',
     ]
-    const child = spawn(exe, args, { stdio: 'ignore' })
+    // ブラウザが標準エラーに書いたことの最後の部分を取っておき、つながらなかったときに見せる
+    const child = spawn(exe, args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    let stderr = ''
+    child.stderr!.on('data', (d: Buffer) => {
+      stderr = (stderr + d.toString()).slice(-4000)
+    })
+    let exited: number | null | undefined
+    child.once('exit', (code) => (exited = code))
 
+    // CI のサーバーでは、ほかの処理と重なると起動に 20 秒以上かかることがあったので、60 秒まで待つ。
+    // ブラウザが途中で終わってしまったら、待たずにやめる
     let wsUrl = ''
-    for (let i = 0; i < 100 && !wsUrl; i++) {
+    for (let i = 0; i < 300 && !wsUrl && exited === undefined; i++) {
       wsUrl = await fetch(`http://127.0.0.1:${port}/json/version`).then((r) => r.json() as Promise<{ webSocketDebuggerUrl: string }>).then((j) => j.webSocketDebuggerUrl).catch(() => '')
       if (!wsUrl) await sleep(200)
     }
     if (!wsUrl) {
       child.kill()
-      throw new Error('ブラウザに接続できませんでした')
+      rmSync(profile, { recursive: true, force: true })
+      const why = exited !== undefined ? `ブラウザが終了しました（終了コード ${exited}）` : '60 秒待っても応答がありませんでした'
+      throw new Error(`ブラウザに接続できませんでした: ${why}${stderr.trim() ? `\n--- ブラウザのエラー出力（最後の部分）---\n${stderr.trim()}` : ''}`)
     }
     const ws = new WebSocket(wsUrl)
     await new Promise((resolve, reject) => {
