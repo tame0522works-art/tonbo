@@ -20,7 +20,8 @@
     "screenshots": "tsx tools/screenshots.ts",
     "bench": "tsx tools/bench.ts",
     "e2e": "vite build --outDir dist-e2e --emptyOutDir && tsx tools/e2e.ts",
-    "check:settings": "tsx tools/check-settings.ts"
+    "check:settings": "tsx tools/check-settings.ts",
+    "sources": "tsx tools/sources.ts"
   },
   "dependencies": {
     "pdfjs-dist": "^6.4.299",

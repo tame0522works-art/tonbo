@@ -1,0 +1,197 @@
+{
+  "checkedAt": "2026-10-15",
+  "pages": {
+    "https://www.nikko-pc.com/site/home-hd-2/home-ng/": {
+      "status": 200,
+      "finalUrl": "https://www.nikko-pc.com/site/home-hd-2/home-ng/",
+      "textHash": "606c75b8f9eb84f8",
+      "textLength": 4144,
+      "imagesHash": "bdfe0129ae9e7bca",
+      "images": 2
+    },
+    "https://www.nikko-pc.com/site/home-hd-2/home-qa/": {
+      "status": 200,
+      "finalUrl": "https://www.nikko-pc.com/site/home-hd-2/home-qa/",
+      "textHash": "123fbacbbdfb8e06",
+      "textLength": 8672,
+      "imagesHash": "67949785f4a729d9",
+      "images": 1
+    },
+    "https://www.nikko-pc.com/site/home-hd-2/home-sehaba/": {
+      "status": 200,
+      "finalUrl": "https://www.nikko-pc.com/site/home-hd-2/home-sehaba/",
+      "textHash": "3455963fd304efbe",
+      "textLength": 21020,
+      "imagesHash": "7b77c0932fb054e9",
+      "images": 2
+    },
+    "https://www.nikko-pc.com/site/home-hd-2/home-tombo/": {
+      "status": 200,
+      "finalUrl": "https://www.nikko-pc.com/site/home-hd-2/home-tombo/",
+      "textHash": "fc006ebeaa573424",
+      "textLength": 1616,
+      "imagesHash": "67949785f4a729d9",
+      "images": 1
+    },
+    "https://www.nikko-pc.com/site/home-hd-2/kihon/": {
+      "status": 200,
+      "finalUrl": "https://www.nikko-pc.com/site/home-hd-2/kihon/",
+      "textHash": "70aa9d525cc95bf6",
+      "textLength": 81615,
+      "imagesHash": "645242f760cc8f9c",
+      "images": 25
+    },
+    "https://www.ryokuyou.co.jp/doujin/faq/faq41.html": {
+      "status": 200,
+      "finalUrl": "https://www.ryokuyou.co.jp/doujin/faq/faq41.html",
+      "textHash": "42b12de0582755e0",
+      "textLength": 3141,
+      "imagesHash": "04bb198642d2eb2c",
+      "images": 22
+    },
+    "https://www.ryokuyou.co.jp/doujin/faq/faq61.html": {
+      "status": 200,
+      "finalUrl": "https://www.ryokuyou.co.jp/doujin/faq/faq61.html",
+      "textHash": "be4caf756363a7d2",
+      "textLength": 2844,
+      "imagesHash": "04bb198642d2eb2c",
+      "images": 22
+    },
+    "https://www.ryokuyou.co.jp/doujin/faq/faq98.html": {
+      "status": 200,
+      "finalUrl": "https://www.ryokuyou.co.jp/doujin/faq/faq98.html",
+      "textHash": "5c40c9ecf744b3ac",
+      "textLength": 3166,
+      "imagesHash": "04bb198642d2eb2c",
+      "images": 22
+    },
+    "https://www.ryokuyou.co.jp/doujin/manual/basic.html": {
+      "status": 200,
+      "finalUrl": "https://www.ryokuyou.co.jp/doujin/manual/basic.html",
+      "textHash": "fdba621ddc1a6130",
+      "textLength": 8060,
+      "imagesHash": "e5334832158d279a",
+      "images": 49
+    },
+    "https://www.ryokuyou.co.jp/doujin/manual/indesign.html": {
+      "status": 200,
+      "finalUrl": "https://www.ryokuyou.co.jp/doujin/manual/indesign.html",
+      "textHash": "46118296a0a14e29",
+      "textLength": 3491,
+      "imagesHash": "165b1e549a0fda40",
+      "images": 31
+    },
+    "https://www.ryokuyou.co.jp/doujin/manual/photoshop.html": {
+      "status": 200,
+      "finalUrl": "https://www.ryokuyou.co.jp/doujin/manual/photoshop.html",
+      "textHash": "1b73cf8d66fc94f9",
+      "textLength": 4529,
+      "imagesHash": "d709e06737d86ad7",
+      "images": 34
+    },
+    "https://www.ryokuyou.co.jp/doujin/sehaba": {
+      "status": 200,
+      "finalUrl": "https://www.ryokuyou.co.jp/doujin/sehaba",
+      "textHash": "28f9b88189d9ac80",
+      "textLength": 2616,
+      "imagesHash": "7177231801df52be",
+      "images": 23
+    },
+    "https://www.ryokuyou.co.jp/doujin/set/a4allcolor.html": {
+      "status": 200,
+      "finalUrl": "https://www.ryokuyou.co.jp/doujin/set/a4allcolor.html",
+      "textHash": "e81f7ee68961b569",
+      "textLength": 5380,
+      "imagesHash": "f866ed9f02841566",
+      "images": 52
+    },
+    "https://www.ryokuyou.co.jp/doujin/set/m01.html": {
+      "status": 200,
+      "finalUrl": "https://www.ryokuyou.co.jp/doujin/set/m01.html",
+      "textHash": "8e7bcb8609f637bb",
+      "textLength": 5711,
+      "imagesHash": "7cace1273b6b029f",
+      "images": 58
+    },
+    "https://www.shimaya.net/bungei/bungei-besic.html": {
+      "status": 200,
+      "finalUrl": "https://www.shimaya.net/bungei/bungei-besic.html",
+      "textHash": "8e3668c2ef213b66",
+      "textLength": 15297,
+      "imagesHash": "98178fa7730d3e38",
+      "images": 131
+    },
+    "https://www.shimaya.net/howto/application.html": {
+      "status": 200,
+      "finalUrl": "https://www.shimaya.net/howto/application.html",
+      "textHash": "69149d1619ec78ef",
+      "textLength": 1082,
+      "imagesHash": "eb2918f318becebb",
+      "images": 22
+    },
+    "https://www.shimaya.net/howto/data-genkou.html": {
+      "status": 200,
+      "finalUrl": "https://www.shimaya.net/howto/data-genkou.html",
+      "textHash": "68e0701c51867b95",
+      "textLength": 3999,
+      "imagesHash": "1adf89624723ae70",
+      "images": 70
+    },
+    "https://www.shimaya.net/howto/ps.html": {
+      "status": 200,
+      "finalUrl": "https://www.shimaya.net/howto/ps.html",
+      "textHash": "fd96365419581760",
+      "textLength": 2353,
+      "imagesHash": "bb46d61f1706753f",
+      "images": 30
+    },
+    "https://www.shimaya.net/howto/sehaba.html": {
+      "status": 200,
+      "finalUrl": "https://www.shimaya.net/howto/sehaba.html",
+      "textHash": "94f2cf0dd8f9176f",
+      "textLength": 42910,
+      "imagesHash": "3823c592d79622aa",
+      "images": 13
+    },
+    "https://www2.popls.co.jp/pop/book/standard.html": {
+      "status": 200,
+      "finalUrl": "https://www2.popls.co.jp/pop/book/standard.html",
+      "textHash": "bdf21af24bed691f",
+      "textLength": 2248,
+      "imagesHash": "798c741698274ef6",
+      "images": 42
+    },
+    "https://www2.popls.co.jp/pop/genkou/hyoushi.html": {
+      "status": 200,
+      "finalUrl": "https://www2.popls.co.jp/pop/genkou/hyoushi.html",
+      "textHash": "b37d76056def7191",
+      "textLength": 2779,
+      "imagesHash": "4cb57f7b7b762c13",
+      "images": 10
+    },
+    "https://www2.popls.co.jp/pop/genkou/kihon.html": {
+      "status": 200,
+      "finalUrl": "https://www2.popls.co.jp/pop/genkou/kihon.html",
+      "textHash": "5a3e7255c0d65064",
+      "textLength": 15753,
+      "imagesHash": "3842722cba891f79",
+      "images": 51
+    },
+    "https://www2.popls.co.jp/pop/genkou/q_and_a.html": {
+      "status": 200,
+      "finalUrl": "https://www2.popls.co.jp/pop/genkou/q_and_a.html",
+      "textHash": "337a00f223e7cec6",
+      "textLength": 7550,
+      "imagesHash": "e3b0c44298fc1c14",
+      "images": 0
+    },
+    "https://www2.popls.co.jp/pop/genkou/saigo.html": {
+      "status": 200,
+      "finalUrl": "https://www2.popls.co.jp/pop/genkou/saigo.html",
+      "textHash": "9d34a2a5bee86622",
+      "textLength": 3502,
+      "imagesHash": "3e0823f790d118f9",
+      "images": 21
+    }
+  }
+}

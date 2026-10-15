@@ -1,0 +1,40 @@
+name: Check spec sources
+
+# 仕様データの出典ページ（各印刷所の公式サイト）が変わっていないかを週に1回確かめ、
+# 変わっていれば Issue で知らせる（開いたままの Issue があれば、新しく立てずにコメントを足す）。
+on:
+  schedule:
+    # 毎週月曜 9:00（日本時間）
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run sources
+      - name: 変わっていれば Issue で知らせる
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ ! -s sources-report.md ]; then
+            echo "出典ページに変化はありません"
+            exit 0
+          fi
+          gh label create sources --color d93f0b --description "印刷所の出典ページの変化" --force
+          open_issue=$(gh issue list --label sources --state open --json number --jq '.[0].number')
+          if [ -n "$open_issue" ]; then
+            gh issue comment "$open_issue" --body-file sources-report.md
+          else
+            gh issue create --title "印刷所の出典ページが変わっています" --label sources --body-file sources-report.md
+          fi
