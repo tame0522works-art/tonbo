@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "check:reader": "tsx tools/check-reader.ts",
     "check:inspect": "tsx tools/check-inspect.ts",
-    "check": "npm run check:reader && npm run check:inspect && npm run check:specs && npm run check:rules && npm run check:nombre && npm run check:raster",
+    "check": "npm run check:reader && npm run check:inspect && npm run check:specs && npm run check:rules && npm run check:nombre && npm run check:raster && npm run check:settings",
     "check:specs": "tsx tools/check-specs.ts",
     "check:rules": "tsx tools/check-rules.ts",
     "samples": "tsx tools/samples.ts",
@@ -19,7 +19,8 @@
     "check:raster": "tsx tools/check-raster.ts",
     "screenshots": "tsx tools/screenshots.ts",
     "bench": "tsx tools/bench.ts",
-    "e2e": "vite build --outDir dist-e2e --emptyOutDir && tsx tools/e2e.ts"
+    "e2e": "vite build --outDir dist-e2e --emptyOutDir && tsx tools/e2e.ts",
+    "check:settings": "tsx tools/check-settings.ts"
   },
   "dependencies": {
     "pdfjs-dist": "^6.4.299",

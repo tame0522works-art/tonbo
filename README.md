@@ -127,7 +127,7 @@ npm run dev           # http://localhost:5191/（ほかの作品と重ならな�
 ```
 
 ```bash
-npm run check         # PDF の読み取り・ページの事実・仕様データ・判定・ノンブル・画像原稿を検証
+npm run check         # PDF の読み取り・ページの事実・仕様データ・判定・ノンブル・画像原稿・設定の引き継ぎを検証
 npm run e2e           # 画面操作のテスト（公開と同じ設定でビルドし、ヘッドレスの Edge / Chrome で操作する）
 npm run build
 npm run preview       # 公開と同じ設定（CSP 入り）のビルドを http://localhost:5192/ で配信する

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Box } from './pdf/inspect.ts'
-import type { Preview } from './preview.ts'
+import type { Box } from '../pdf/inspect.ts'
+import type { Preview } from '../preview.ts'
 
 export type Mark = { box: Box; label?: string }
 
