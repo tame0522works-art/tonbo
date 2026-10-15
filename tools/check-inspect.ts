@@ -12,12 +12,15 @@ for (const compressed of [false, true]) {
 
   // 画像: 1. RGB 1240×1748px を A5（148×210mm）全面に → 約 212.8dpi
   //       2. ICC（N=4）の CMYK 700×700px を 50.8mm 角に → 350dpi
-  //       3. Indexed（元は RGB）の 2値ではないパレット画像
+  //       3. Indexed（元は RGB）で、パレットに赤を含む画像と、白と黒だけの画像
   //       4. 2値の画像マスク
   const imRgb = b.add('<< /Type /XObject /Subtype /Image /Width 1240 /Height 1748 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode >>', 'x')
   const icc = b.add('<< /N 4 >>', 'icc')
   const imCmyk = b.add(`<< /Type /XObject /Subtype /Image /Width 700 /Height 700 /ColorSpace [/ICCBased ${icc} 0 R] /BitsPerComponent 8 >>`, 'x')
-  const imIdx = b.add('<< /Type /XObject /Subtype /Image /Width 100 /Height 100 /ColorSpace [/Indexed /DeviceRGB 1 <000000FFFFFF>] /BitsPerComponent 8 >>', 'x')
+  const imIdx = b.add('<< /Type /XObject /Subtype /Image /Width 100 /Height 100 /ColorSpace [/Indexed /DeviceRGB 1 <000000FF0000>] /BitsPerComponent 8 >>', 'x')
+  // パレットを stream で持つ形（白と黒の2色）
+  const lut = b.add('<< >>', Uint8Array.of(0, 0, 0, 255, 255, 255))
+  const imBW = b.add(`<< /Type /XObject /Subtype /Image /Width 100 /Height 100 /ColorSpace [/Indexed /DeviceRGB 1 ${lut} 0 R] /BitsPerComponent 1 >>`, 'x')
   const imMask = b.add('<< /Type /XObject /Subtype /Image /Width 1200 /Height 1200 /ImageMask true >>', 'x')
   // 部品（Form XObject）の中で半分に縮めて置いた CMYK 画像 → 解像度は倍の 700dpi になる
   const form = b.add(
@@ -40,6 +43,7 @@ for (const compressed of [false, true]) {
     `q ${w} 0 0 ${h} 0 0 cm /ImR Do Q`,
     `q 144 0 0 144 10 10 cm /ImC Do Q`,
     `q 72 0 0 72 0 0 cm /ImI Do Q`,
+    `q 72 0 0 72 100 0 cm /ImW Do Q`,
     `q 288 0 0 288 0 0 cm /ImM Do Q`,
     `/Fm Do`,
     `BT /F1 10 Tf 1 0 0 rg (a) Tj /F2 10 Tf (b) Tj /F4 10 Tf (c) Tj ET`,
@@ -53,7 +57,7 @@ for (const compressed of [false, true]) {
     'q 72 0 0 72 0 0 cm BI /W 30 /H 30 /CS /RGB /BPC 8 ID \x00\x01 EI Q',
   ].join('\n')
   const c1 = b.add('<< /Filter /FlateDecode >>', flate(content1))
-  const res = `<< /XObject << /ImR ${imRgb} 0 R /ImC ${imCmyk} 0 R /ImI ${imIdx} 0 R /ImM ${imMask} 0 R /Fm ${form} 0 R >>
+  const res = `<< /XObject << /ImR ${imRgb} 0 R /ImC ${imCmyk} 0 R /ImI ${imIdx} 0 R /ImW ${imBW} 0 R /ImM ${imMask} 0 R /Fm ${form} 0 R >>
     /Font << /F1 ${fEmb} 0 R /F2 ${fNot} 0 R /F3 ${fUnused} 0 R /F4 ${fT3} 0 R >>
     /ColorSpace << /CS0 [/Separation /#E7#89#B9#E8#89#B2 /DeviceCMYK 0 0 R] /CS1 [/ICCBased ${b.add('<< /N 3 >>', 'icc')} 0 R] >> >>`
   // 1ページ目: A5 の仕上がりに 3mm の塗り足し。MediaBox と Resources は親の Pages から受け継ぐ
@@ -91,7 +95,8 @@ for (const compressed of [false, true]) {
   near(cmyk[0].dpiX, 350)
   near(cmyk[1].dpiX, 700, 0.01, '部品の Matrix で半分に縮めた分')
   near(cmyk[0].bounds.x0, 10)
-  assert.equal(byLabel('ImI')[0].color, 'rgb', 'Indexed は元の色空間で判断する')
+  assert.equal(byLabel('ImI')[0].color, 'rgb', 'パレットに色があれば RGB')
+  assert.equal(byLabel('ImW')[0].color, 'gray', 'パレットの形式が RGB でも、中身が白と黒だけならグレー')
   assert.equal(byLabel('ImM')[0].color, 'mask')
   const inline = byLabel('インライン')
   assert.equal(inline.length, 2, 'インライン画像の中身を読み飛ばしたあとも続きを読めている')

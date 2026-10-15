@@ -96,6 +96,11 @@ function jpeg(w: number, h: number, comps: number, jfif?: { units: number; x: nu
   assert.equal(inspectRaster(png(10, 10, 6, 8)).alpha, true)
   assert.equal(inspectRaster(png(10, 10, 2, 8, undefined, [chunk('iCCP', Buffer.from('x\0\0'))])).icc, true)
   assert.equal(inspectRaster(png(10, 10, 2, 8)).dpi, undefined)
+  // パレット画像は PLTE の中身で決める: 灰色だけ → gray、白と黒だけ → mono、色があれば rgb
+  const plte = (...rgb: number[]) => chunk('PLTE', Buffer.from(rgb))
+  assert.equal(inspectRaster(png(10, 10, 3, 8, undefined, [plte(0, 0, 0, 128, 128, 128, 255, 255, 255)])).color, 'gray')
+  assert.equal(inspectRaster(png(10, 10, 3, 1, undefined, [plte(0, 0, 0, 255, 255, 255)])).color, 'mono')
+  assert.equal(inspectRaster(png(10, 10, 3, 8, undefined, [plte(0, 0, 0, 255, 0, 0)])).color, 'rgb')
 
   const j = inspectRaster(jpeg(2122, 2976, 4, { units: 1, x: 350 }))
   assert.deepEqual([j.format, j.pxWidth, j.pxHeight, j.color, j.dpi?.x, j.dpi?.source], ['jpeg', 2122, 2976, 'cmyk', 350, 'JFIF'])
@@ -151,6 +156,11 @@ assert.deepEqual(codes([file('1.png', png(2000, 2000, 0, 1)), file('2.png', mono
 // 透明・RGB
 assert.deepEqual(codes([file('1.png', png(2122, 2976, 6, 8, 350))], opts({ ink: 'color' })), ['raster-alpha', 'rgb-accepted'])
 assert.deepEqual(codes([file('1.png', png(2122, 2976, 2, 8, 350))], opts()), ['rgb-in-mono'])
+// 白黒の漫画をパレット形式で保存した PNG は、モノクロ本文でも RGB の指摘を出さない（600dpi のモノクロ2階調として合格）
+assert.deepEqual(
+  codes([file('1.png', png(3638, 5102, 3, 1, 600, [chunk('PLTE', Buffer.from([0, 0, 0, 255, 255, 255]))]))], opts()),
+  [],
+)
 
 // 表紙: 背幅がわかれば表紙の大きさで判断する（緑陽社 上質90kg 100ページ → 背幅 6.7mm、塗り足し込み 308.7×216mm）
 {

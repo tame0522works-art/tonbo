@@ -4,9 +4,10 @@
  * - 解像度の情報（PNG は pHYs、JPEG は JFIF と Exif）。書かれていなければ undefined
  * - 色の種類（2階調・グレー・RGB・CMYK）と透明の有無、ICC プロファイルの有無
  */
+import { paletteColor } from '../palette.ts'
 
 export type RasterFormat = 'png' | 'jpeg'
-export type RasterColor = 'mono' | 'gray' | 'rgb' | 'cmyk' | 'indexed'
+export type RasterColor = 'mono' | 'gray' | 'rgb' | 'cmyk'
 
 export type RasterMeta = {
   format: RasterFormat
@@ -14,7 +15,7 @@ export type RasterMeta = {
   pxHeight: number
   /** 画像に書かれた解像度（横・縦）。書かれていなければ undefined */
   dpi?: { x: number; y: number; source: 'pHYs' | 'JFIF' | 'Exif' }
-  /** indexed は PNG のパレット画像。パレットの色は RGB なので、色の検査では RGB として扱う */
+  /** PNG のパレット画像は、パレットの中身で決める（灰色だけなら gray、白と黒だけなら mono） */
   color: RasterColor
   bitDepth: number
   alpha: boolean
@@ -43,13 +44,16 @@ function inspectPng(b: Uint8Array): RasterMeta {
       const colorType = b[d + 9]
       const bitDepth = b[d + 8]
       // 色の種類: 0 グレー、2 RGB、3 パレット、4 グレー＋透明、6 RGB＋透明
-      const color: RasterColor = colorType === 0 || colorType === 4 ? (bitDepth === 1 ? 'mono' : 'gray') : colorType === 3 ? 'indexed' : 'rgb'
+      // パレット画像（3）は、ひとまず rgb とし、PLTE を読んだところで中身から決め直す
+      const color: RasterColor = colorType === 0 || colorType === 4 ? (bitDepth === 1 ? 'mono' : 'gray') : 'rgb'
       meta = { format: 'png', pxWidth: u32(b, d), pxHeight: u32(b, d + 4), color, bitDepth, alpha: colorType === 4 || colorType === 6, icc: false }
     } else if (!meta) {
       throw new RasterError('PNG の先頭に IHDR がない')
     } else if (type === 'pHYs' && b[d + 8] === 1) {
       // 単位 1 は「1メートルあたりの画素数」
       meta.dpi = { x: u32(b, d) * 0.0254, y: u32(b, d + 4) * 0.0254, source: 'pHYs' }
+    } else if (type === 'PLTE') {
+      meta.color = paletteColor(b.subarray(d, d + len))
     } else if (type === 'iCCP') {
       meta.icc = true
     } else if (type === 'tRNS') {

@@ -7,6 +7,7 @@
  * 描画命令は cm（座標変換）・q/Q（状態の保存と復元）・Do（画像や部品の配置）など、必要な演算子だけを解釈する。
  */
 import { Progress, type OnProgress } from '../progress.ts'
+import { paletteColor } from '../palette.ts'
 import { PdfDocument, UnsupportedFilter } from './document.ts'
 import {
   displayName,
@@ -14,6 +15,7 @@ import {
   isOperator,
   isRef,
   isStream,
+  isString,
   latin1,
   Lexer,
   PdfSyntaxError,
@@ -380,8 +382,18 @@ async function colorFamily(ctx: Ctx, v: PdfValue | undefined, resources: PdfDict
       return n === 1 ? 'gray' : n === 3 ? 'rgb' : n === 4 ? 'cmyk' : 'unknown'
     }
     case 'Indexed':
-    case 'I':
-      return colorFamily(ctx, cs[1], resources, depth + 1)
+    case 'I': {
+      const base = await colorFamily(ctx, cs[1], resources, depth + 1)
+      if (base !== 'rgb') return base
+      // 元が RGB でも、パレットの中身が灰色だけならグレーとして扱う（白と黒の2色も、1bit ならモノクロ2階調として判定される）
+      const hival = Number(await doc.get(cs[2]))
+      const lookup = await doc.get(cs[3])
+      let table: Uint8Array | undefined
+      if (isString(lookup)) table = lookup.bytes
+      else if (isStream(lookup)) table = await doc.decode(lookup).catch(() => undefined)
+      if (!table || !(hival >= 0)) return base
+      return paletteColor(table, Math.min(hival + 1, Math.floor(table.length / 3))) === 'rgb' ? 'rgb' : 'gray'
+    }
     case 'Separation':
     case 'DeviceN': {
       const names = await doc.get(cs[1])

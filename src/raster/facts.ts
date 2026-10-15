@@ -108,7 +108,7 @@ export function rasterFacts(files: RasterFile[], opts: CheckOptions): { facts: D
     const wPt = sizeUnknown ? meta.pxWidth : (meta.pxWidth / dx) * 72
     const hPt = sizeUnknown ? meta.pxHeight : (meta.pxHeight / dy) * 72
     const box = { x0: 0, y0: 0, x1: wPt, y1: hPt }
-    const color: ColorFamily = meta.color === 'mono' ? 'gray' : meta.color === 'indexed' ? 'rgb' : meta.color
+    const color: ColorFamily = meta.color === 'mono' ? 'gray' : meta.color
     return {
       number,
       mediaBox: box,
