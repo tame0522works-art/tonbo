@@ -1,6 +1,6 @@
-// 画面の設定の引き継ぎ方、本文か表紙かの見当の付け方、ページ範囲の表示を確かめる（画面の部品から切り出した、DOM に依存しない部分）
+// 画面の設定の引き継ぎ方と覚え方、本文か表紙かの見当の付け方、ページ範囲の表示を確かめる（画面の部品から切り出した、DOM に依存しない部分）
 import assert from 'node:assert/strict'
-import { initialSettings, printerOf, sampleSettings, withPrinter } from '../src/settings.ts'
+import { initialSettings, printerOf, restoreSettings, sampleSettings, serializeSettings, withPrinter } from '../src/settings.ts'
 import { pageRanges } from '../src/ui/format.ts'
 import { guessPart, splitRasterParts } from '../src/check/part.ts'
 import type { PageFacts } from '../src/pdf/inspect.ts'
@@ -53,6 +53,27 @@ assert.equal(pageRanges([]), '')
   assert.deepEqual(splitRasterParts([raster('cover.png', 4300, 3000)]).map((g) => g.part), ['cover'])
   // 横長が2枚以上なら見開きの本文かもしれないので、分けずに本文とする
   assert.deepEqual(splitRasterParts([raster('1.png', 4244, 2976), raster('2.png', 4244, 2976), raster('3.png', 2122, 2976)]).map((g) => [g.part, g.files.length]), [['body', 3]])
+}
+
+// --- 端末に覚える ---
+{
+  const base = initialSettings()
+  // 覚えた値をそのまま戻す。本文のページ数と手入力の背幅は覚えない
+  const s = { ...withPrinter(base, 'popls'), formatId: 'B5', ink: 'color' as const, binding: 'saddle' as const, paperId: 'jouhou110', bodyPages: 80, spineMm: 6 }
+  const back = restoreSettings(serializeSettings(s))
+  assert.deepEqual(
+    [back.printerId, back.formatId, back.ink, back.binding, back.paperId, back.bodyPages, back.spineMm],
+    ['popls', 'B5', 'color', 'saddle', 'jouhou110', undefined, undefined],
+  )
+  // 読めない値・形の違う値は初期値に
+  for (const raw of [null, '', 'not json', '[]', '{"v":2,"printerId":"popls"}', '{"v":1,"printerId":"unknown"}']) {
+    assert.deepEqual(restoreSettings(raw), base, String(raw))
+  }
+  // 印刷所は合っていて、ほかの項目が今の仕様にないときは、その項目だけ初期値に（日光企画に A4 はない）
+  const partial = restoreSettings('{"v":1,"printerId":"nikko","formatId":"A4","ink":"rainbow","binding":"saddle","paperId":"nope"}')
+  assert.deepEqual([partial.printerId, partial.formatId, partial.ink, partial.binding, partial.paperId], ['nikko', 'A5', 'mono', 'saddle', base.paperId])
+  // 早見表しかない印刷所（用紙がない）も戻せる
+  assert.equal(restoreSettings(serializeSettings(withPrinter(base, 'shimaya'))).printerId, 'shimaya')
 }
 
 console.log('check:settings ok')

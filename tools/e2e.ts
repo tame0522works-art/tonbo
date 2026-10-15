@@ -386,6 +386,30 @@ const scenarios: Scenario[] = [
     },
   },
   {
+    name: '設定を覚える: 開き直しても印刷所と判型が残り、見本を開いただけでは書き換わらない',
+    async run(ui) {
+      await ui.open()
+      await ui.choose('印刷所', 'ポプルス')
+      await ui.choose('判型', 'B5')
+      await ui.choose('とじ方', '中とじ')
+      const selected = () =>
+        ui.page.run<string[]>(`return [...document.querySelectorAll('.settings select')].map(s => s.selectedOptions[0].textContent)`)
+      const reload = async () => {
+        await ui.page.send('Page.reload')
+        await sleep(300)
+        await ui.page.waitFor(`document.readyState === 'complete' && document.querySelector('.drop input')`, '開き直し')
+      }
+      await reload()
+      assert.deepEqual(await selected(), ['ポプルス', 'B5（182×257mm）', 'モノクロ', '中とじ'])
+      // 見本は A5 で開くが、それは覚えない。開き直すと B5 に戻る
+      await ui.click('.sample button', '本文')
+      await ui.waitForResult()
+      assert.equal((await selected())[1], 'A5（148×210mm）')
+      await reload()
+      assert.equal((await selected())[1], 'B5（182×257mm）')
+    },
+  },
+  {
     name: 'スマホ: 指摘とページの絵が横にはみ出さない',
     viewport: PHONE,
     async run(ui) {

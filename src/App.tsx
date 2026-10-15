@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { loadFiles, release, type InputFile, type Loaded } from './load.ts'
 import sampleCover from './samples/sample-a5-cover-ng.pdf?inline'
 import sampleBody from './samples/sample-a5-ng.pdf?inline'
-import { initialSettings, sampleSettings, type Settings } from './settings.ts'
+import { readSavedSettings, sampleSettings, saveSettings, type Settings } from './settings.ts'
 import { PRINTERS } from './specs/index.ts'
 import { Result } from './ui/Result.tsx'
 import { SettingsPanel } from './ui/SettingsPanel.tsx'
@@ -14,7 +14,13 @@ export default function App() {
   const [progress, setProgress] = useState<string | null>(null)
   /** 読み込み中に別のファイルが入れられたら、前の読み込みの結果は捨てる。何回目の読み込みかを数えて見分ける */
   const openCount = useRef(0)
-  const [settings, setSettings] = useState<Settings>(initialSettings)
+  const [settings, setSettings] = useState<Settings>(readSavedSettings)
+
+  /** 利用者が設定欄を変えたときだけ覚える（見本を開いたときの判型の切り替えは覚えない） */
+  function changeSettings(s: Settings) {
+    setSettings(s)
+    saveSettings(s)
+  }
 
   async function open(files: FileList | InputFile[] | null) {
     const list = files ? Array.from(files) : []
@@ -57,7 +63,7 @@ export default function App() {
         <p>同人誌の入稿データを、印刷所の仕様に照らして確かめます。ファイルはこの端末の外に送りません。</p>
       </header>
 
-      <SettingsPanel settings={settings} showCover={loaded.some((l) => l.kind !== 'error' && l.part === 'cover')} onChange={setSettings} />
+      <SettingsPanel settings={settings} showCover={loaded.some((l) => l.kind !== 'error' && l.part === 'cover')} onChange={changeSettings} />
 
       <label className="drop">
         PDF、または PNG・JPEG の画像をここにドロップ、または選ぶ
@@ -93,6 +99,7 @@ export default function App() {
         <p>
           各印刷所の公式サイトに書かれた仕様（{PRINTERS[0].checkedAt} 時点）を元にした非公式のチェックです。入稿の前に、必ず印刷所の最新の案内も確かめてください。
         </p>
+        <p>選んだ印刷所や判型は、次に開いたときのために、この端末のブラウザに覚えます。</p>
         <p>版 {__APP_VERSION__}</p>
       </footer>
     </main>
