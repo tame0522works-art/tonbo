@@ -128,6 +128,7 @@ npm run dev           # http://localhost:5191/（ほかの作品と重ならな�
 
 ```bash
 npm run check         # PDF の読み取り・ページの事実・仕様データ・判定・ノンブル・画像原稿を検証
+npm run e2e           # 画面操作のテスト（公開と同じ設定でビルドし、ヘッドレスの Edge / Chrome で操作する）
 npm run build
 npm run preview       # 公開と同じ設定（CSP 入り）のビルドを http://localhost:5192/ で配信する
 npm run screenshots   # README の画像を撮り直す（npm run preview を起動しておく）
@@ -137,7 +138,11 @@ npm run samples       # 見本の PDF（src/samples/）を作り直す
 
 `npm run check` の確認では、PDF をバイト単位で組み立てて使う（[`tools/pdf-builder.ts`](tools/pdf-builder.ts)）。表形式と stream 形式の相互参照表、追記、位置のずれた表、Length の誤った stream など、実在の作成ソフトが出す形を再現している。
 
-`main` に push すると、GitHub Actions が lint・検証・ビルドを通したうえで GitHub Pages に公開する（[`.github/workflows/pages.yml`](.github/workflows/pages.yml)）。
+`npm run e2e` は [`tools/e2e.ts`](tools/e2e.ts)。CSP 入りのビルドをローカルで配信し、DevTools Protocol で本物のクリック・キーボード入力・ファイル選択を送る。
+見本の指摘と赤枠、印刷所の切り替え、表紙の背幅と手入力、保護のかかった PDF・2ページの表紙・埋め込みのない日本語フォントのページ、画像原稿の並び順とページの表示、読み込み中の進み具合、スマホ幅、外への通信の拒否を確かめ、どの場面でも CSP 違反が起きないことを見ている（8件、約10秒）。
+直した不具合（読み込み中に開き直したとき前の結果が混ざる、CMap をスクリプトとして読ませないと日本語のページが描けない）をわざと戻すと、対応するテストが失敗することも確かめた。
+
+`main` に push すると、GitHub Actions が lint・検証・画面操作のテスト・ビルドを通したうえで GitHub Pages に公開する（[`.github/workflows/pages.yml`](.github/workflows/pages.yml)）。
 
 README の画像は [`tools/screenshots.ts`](tools/screenshots.ts) で撮っている。Edge（なければ Chrome）を画面なしで起動し、Chrome DevTools Protocol で見本を開いて指摘のページを開くまでを毎回同じ手順で行う。普段のブラウザのデータには触れない（一時プロファイルを使い、終わったら消す）。
 

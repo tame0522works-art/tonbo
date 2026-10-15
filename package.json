@@ -18,7 +18,8 @@
     "check:nombre": "tsx tools/check-nombre.ts",
     "check:raster": "tsx tools/check-raster.ts",
     "screenshots": "tsx tools/screenshots.ts",
-    "bench": "tsx tools/bench.ts"
+    "bench": "tsx tools/bench.ts",
+    "e2e": "vite build --outDir dist-e2e --emptyOutDir && tsx tools/e2e.ts"
   },
   "dependencies": {
     "pdfjs-dist": "^6.4.299",

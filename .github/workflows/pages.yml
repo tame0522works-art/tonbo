@@ -26,6 +26,16 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run check
+      # Ubuntu には日本語フォントがないので、埋め込みのない日本語フォントのページの描画を確かめるために入れる
+      - run: sudo apt-get update -q && sudo apt-get install -y -q fonts-noto-cjk
+      # 公開と同じ設定でビルドしたものを、ヘッドレスの Chrome で操作して確かめる
+      - run: npm run e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failures
+          path: e2e-failures
+          if-no-files-found: ignore
       - run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
