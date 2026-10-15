@@ -4,9 +4,11 @@
   --muted: #66707a;
   --line: #d6d3cb;
   --accent: #c2412d;
-  --warn: #b7791f;
+  --warn: #9c6214;
   --ok: #2f855a;
   --surface: #ffffff;
+  /* 指摘の札（要修正・注意・参考）の文字の色。札の色に対して読める濃さにする */
+  --badge-fg: #ffffff;
   color-scheme: light dark;
   font-family: system-ui, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
 }
@@ -20,6 +22,8 @@
     --warn: #d69e2e;
     --ok: #48bb78;
     --surface: #202328;
+    /* ダークモードの札は明るい色なので、文字は暗くする */
+    --badge-fg: #17191c;
   }
 }
 * {
@@ -154,7 +158,7 @@ footer {
   text-align: center;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--badge-fg);
   background: var(--muted);
 }
 .finding.error .level {
