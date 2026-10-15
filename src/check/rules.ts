@@ -71,11 +71,12 @@ export function checkDocument(facts: DocumentFacts, opts: CheckOptions, texts?: 
     })
   }
 
+  const coverSeparate = opts.part === 'cover' && checkCoverPages(facts.pages, format, printer, add)
   for (const p of facts.pages) {
     if (p.sizeUnknown) {
       // 大きさがわからない理由は、画像原稿の読み取り側で指摘している
     } else if (opts.part === 'body') checkSize(p, format, printer, cite, add)
-    else if (p.number === 1) checkCoverSize(p, format, opts, cite, add)
+    else if (p.number === 1 && !coverSeparate) checkCoverSize(p, format, opts, cite, add)
     checkImages(p, opts, cite, add)
     checkFonts(p, printer, cite, add)
     checkPaint(p, opts, cite, add)
@@ -362,12 +363,33 @@ function checkPageCount(pages: number, format: Format, opts: CheckOptions, cite:
   }
   const u = rule.value
   const unit = u.byFormat?.[format.id] ?? u.unit
-  const total = u.includesCover ? pages + 4 : pages
-  const countText = u.includesCover ? `本文 ${pages} ページと表紙 4 ページの計 ${total} ページ` : `本文 ${pages} ページ`
-  const problems: string[] = []
-  if (total % unit !== 0) problems.push(`${unit} の倍数ではありません`)
-  if (u.min !== undefined && total < u.min) problems.push(`${u.min} ページ未満です`)
-  if (u.max !== undefined && total > u.max) problems.push(`${u.max} ページを超えています`)
+  const evaluate = (includesCover: boolean) => {
+    const total = includesCover ? pages + 4 : pages
+    const problems: string[] = []
+    if (total % unit !== 0) problems.push(`${unit} の倍数ではありません`)
+    if (u.min !== undefined && total < u.min) problems.push(`${u.min} ページ未満です`)
+    if (u.max !== undefined && total > u.max) problems.push(`${u.max} ページを超えています`)
+    const text = includesCover ? `本文 ${pages} ページと表紙 4 ページの計 ${total} ページ` : `本文 ${pages} ページ`
+    return { problems, text }
+  }
+  // 表紙を含めるかが書かれていなければ、両方の数え方で試す
+  if (u.coverCountUnknown) {
+    const bodyOnly = evaluate(false)
+    const withCover = evaluate(true)
+    if (bodyOnly.problems.length === 0 && withCover.problems.length === 0) return
+    if (bodyOnly.problems.length === 0 || withCover.problems.length === 0) {
+      const verdict = (r: { problems: string[]; text: string }) => `${r.text}で${r.problems.length ? `、${r.problems.join('。')}` : '条件に合います'}`
+      add({
+        level: 'warn',
+        code: 'page-unit-ambiguous',
+        title: `ページ数が${bindingLabel}の条件に合うかは、表紙を数えに含めるかで変わります`,
+        detail: `${verdict(bodyOnly)}。${verdict(withCover)}。${opts.printer.name}のサイトには表紙を含めて数えるかの記載がないため、入稿の前に印刷所に確かめてください。${note(rule)}`,
+        sources: cite(rule),
+      })
+      return
+    }
+  }
+  const { problems, text: countText } = u.coverCountUnknown ? evaluate(false) : evaluate(u.includesCover)
   if (problems.length === 0) return
   add({
     level: u.strict ? 'error' : 'info',
@@ -618,4 +640,37 @@ function checkCoverSize(p: PageFacts, format: Format, opts: CheckOptions, cite: 
       page.cropBox,
     )
   }
+}
+
+/**
+ * 表紙の PDF が2ページ以上あるときに伝える。1ページ目が判型1面分の大きさなら、
+ * 表1と表4を別のページにした作り方とみなし、「表4・背・表1 を並べた1枚」としての大きさは確かめない
+ * （しまや出版のように、表1と表4を別にする入稿を案内している印刷所もあるため、不備とはしない）。
+ * 戻り値は、表紙の大きさの検査を飛ばすかどうか
+ */
+function checkCoverPages(pages: PageFacts[], format: Format, printer: PrinterSpec, add: Add): boolean {
+  if (pages.length < 2) return false
+  const p = pages[0]
+  const bleed = printer.bleedMm.value
+  const [w, h] = size(p.trimBox ?? p.cropBox, p.rotate)
+  const onePage = near(w, format.w) && near(h, format.h)
+  const onePageWithBleed = !p.trimBox && near(w, format.w + bleed * 2) && near(h, format.h + bleed * 2)
+  if (!p.sizeUnknown && (onePage || onePageWithBleed)) {
+    add({
+      level: 'info',
+      code: 'cover-separate',
+      title: '表1と表4を別のページにした表紙とみなしました',
+      detail: `表紙の PDF が ${pages.length} ページあり、1ページ目が${format.label} 1面分の大きさです。tonbo は表4・背・表1 を横に並べた1枚の表紙の大きさを確かめるので、この表紙の大きさと背幅は確かめていません（画像の解像度や色は全ページを確かめています）。別のページで入稿してよいかは、印刷所の案内で確かめてください。`,
+      sources: [],
+    })
+    return true
+  }
+  add({
+    level: 'info',
+    code: 'cover-extra-pages',
+    title: `表紙の PDF に ${pages.length} ページあります`,
+    detail: '1ページ目だけを表紙（表4・背・表1 を並べた1枚）として大きさを確かめました。2ページ目以降の大きさは確かめていません（画像の解像度や色は全ページを確かめています）。',
+    sources: [],
+  })
+  return false
 }

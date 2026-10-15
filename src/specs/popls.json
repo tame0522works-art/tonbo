@@ -126,12 +126,13 @@
         "unit": 2,
         "min": 10,
         "includesCover": false,
-        "strict": true
+        "strict": true,
+        "coverCountUnknown": true
       },
       "src": [
         "ST"
       ],
-      "note": "平とじは 10 ページ以上の 2 の倍数"
+      "note": "平とじは 10 ページ以上の 2 の倍数（表紙を数えに含めるかは記載がない）"
     },
     "saddle": {
       "value": {

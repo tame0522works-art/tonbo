@@ -127,12 +127,13 @@
       "value": {
         "unit": 2,
         "includesCover": false,
-        "strict": true
+        "strict": true,
+        "coverCountUnknown": true
       },
       "src": [
         "M01"
       ],
-      "note": "無線とじは 2 ページ単位"
+      "note": "無線とじは 2 ページ単位（表紙を数えに含めるかは記載がない）"
     },
     "saddle": {
       "value": {

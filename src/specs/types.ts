@@ -34,6 +34,8 @@ export type PageUnit = {
   max?: number
   /** 単位に表紙の4ページを含めて数えるか */
   includesCover: boolean
+  /** 表紙を含めるかが公式サイトに書かれていない。判定では両方の数え方を試し、結果が変わるときはそう伝える（includesCover は使わない） */
+  coverCountUnknown?: boolean
   /** true なら入稿の条件、false なら料金表の刻み（外れても入稿はできるが、料金は一つ上になる） */
   strict: boolean
 }

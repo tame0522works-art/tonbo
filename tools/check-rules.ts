@@ -162,4 +162,32 @@ assert.deepEqual(codes(doc(nikkoShinsho), opts({ printer: spec('nikko'), formatI
   assert.deepEqual(codes(coverPage(308.3, 216), coverOpts({ printer: spec('shimaya'), spineMm: 6.3 })), [])
 }
 
+// 表紙を数えに含めるかが書かれていない印刷所（ポプルスの平とじ: 10 ページ以上の 2 の倍数）は、両方の数え方で試す
+{
+  const pages = (n: number) => Array.from({ length: n }, (_, i) => page(i + 1))
+  const popls = (n: number) => checkDocument(doc(pages(n)), opts({ printer: spec('popls') })).filter((f) => f.code.startsWith('page-unit'))
+  assert.deepEqual(popls(10).map((f) => f.code), [], '本文だけでも表紙込みでも合う')
+  const ambiguous = popls(8)
+  assert.deepEqual(ambiguous.map((f) => [f.code, f.level]), [['page-unit-ambiguous', 'warn']], '本文だけなら 10 未満、表紙込みなら 12 で合う')
+  assert.match(ambiguous[0].detail, /本文 8 ページで、10 ページ未満です。本文 8 ページと表紙 4 ページの計 12 ページで条件に合います/)
+  assert.deepEqual(popls(7).map((f) => [f.code, f.level]), [['page-unit', 'error']], 'どちらで数えても奇数')
+  // 緑陽社の無線とじ（2 ページ単位）は、表紙の 4 ページを足しても偶奇が変わらないので、結果は数え方によらない
+  assert.deepEqual(
+    checkDocument(doc(pages(3)), opts()).filter((f) => f.code.startsWith('page-unit')).map((f) => f.code),
+    ['page-unit'],
+  )
+}
+
+// 表紙の PDF が2ページ以上
+{
+  const coverOpts = opts({ part: 'cover', paperId: 'jouhou90', bodyPages: 100 })
+  const sized = (n: number, w: number, h: number) => page(n, { mediaBox: box(w, h), cropBox: box(w, h) })
+  // 1ページ目が A5 1面分（塗り足し込み）→ 表1と表4を別のページにしたとみなし、大きさと背幅は確かめない
+  assert.deepEqual(codes(doc([sized(1, 154, 216), sized(2, 154, 216)]), coverOpts), ['cover-separate'])
+  // 1ページ目が表4・背・表1 を並べた大きさ → 1ページ目だけ確かめたと伝える
+  assert.deepEqual(codes(doc([sized(1, 308.7, 216), sized(2, 154, 216)]), coverOpts), ['cover-extra-pages'])
+  // 1ページ目の背幅が違えば、その指摘も出る
+  assert.deepEqual(codes(doc([sized(1, 305.7, 216), sized(2, 154, 216)]), coverOpts), ['cover-spine', 'cover-extra-pages'])
+}
+
 console.log('check:rules ok')
