@@ -146,6 +146,8 @@ npm run samples       # 見本の PDF（src/samples/）を作り直す
 直した不具合（読み込み中に開き直したとき前の結果が混ざる、CMap をスクリプトとして読ませないと日本語のページが描けない、見開きを「大きさが合わない」とする、設定を覚えない・見本を開いただけで覚える）をわざと戻すと、対応するテストが失敗することも確かめた。
 
 `main` に push すると、GitHub Actions が lint・検証・画面操作のテスト・ビルドを通したうえで GitHub Pages に公開する（[`.github/workflows/pages.yml`](.github/workflows/pages.yml)）。
+Pull Request では同じ確認とビルドまでを動かし、公開はしない。
+依存パッケージとアクションの更新は、Dependabot が毎週月曜に Pull Request で知らせる（[`.github/dependabot.yml`](.github/dependabot.yml)）。小さな更新はまとめて1つにし、メジャー更新は個別にする。確認が通ったものをマージする。
 
 出典ページの変化は [`tools/sources.ts`](tools/sources.ts) で確かめる。仕様データにある出典ページを1ページずつ間を空けて取り、開けるか・転送先・本文の文字（タグやスクリプトを除いたもの）・載っている画像の一覧を、記録（[`tools/sources-baseline.json`](tools/sources-baseline.json)）と比べる。しまや出版は仕様を画像で載せているので、画像の差し替えも見ている。
 [`.github/workflows/sources.yml`](.github/workflows/sources.yml) が毎週月曜にこれを動かし、変わっていれば Issue を立てる。作る前に各ページを2回ずつ取り、取るたびに変わる部分（日付や広告）がなく、誤って知らせないことを確かめた。

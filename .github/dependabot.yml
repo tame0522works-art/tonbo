@@ -1,0 +1,27 @@
+# 依存パッケージとアクションの更新を、週に1回 Pull Request で知らせる。
+# Pull Request では pages.yml の確認・画面操作のテスト・ビルドが動く（公開はしない）ので、通ったものをマージする。
+# 小さな更新（マイナー・パッチ）はまとめて1つにし、メジャー更新は壊れる変更を含みうるので個別にする。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Asia/Tokyo
+    groups:
+      actions:
+        patterns: ['*']
