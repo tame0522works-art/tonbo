@@ -61,6 +61,30 @@ class Ui {
     await sleep(200)
   }
 
+  /** 結果の見出しの横の選択欄で、そのファイルを本文か表紙かに切り替える */
+  async setPart(fileName: string, part: '本文' | '表紙') {
+    await this.page.run(`
+      const sec = [...document.querySelectorAll('section')].find(s => s.querySelector('h2').textContent.includes(${JSON.stringify(fileName)}));
+      if (!sec) throw new Error(${JSON.stringify(`${fileName} の結果がありません`)});
+      const sel = sec.querySelector('.part select');
+      const i = [...sel.options].findIndex(o => o.textContent === ${JSON.stringify(part)});
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, sel.options[i].value);
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    `)
+    await sleep(200)
+  }
+
+  /** ファイルごとの結果（見出し・本文か表紙か・指摘の題名） */
+  sections() {
+    return this.page.run<{ name: string; part: string; titles: string[] }[]>(`
+      return [...document.querySelectorAll('section')].map(s => ({
+        name: s.querySelector('h2').textContent,
+        part: s.querySelector('.part select')?.selectedOptions[0].textContent ?? '',
+        titles: [...s.querySelectorAll('.finding strong')].map(x => x.textContent),
+      }));
+    `)
+  }
+
   /** 設定欄の数値の入力欄に、キーボードで打ち込む */
   async type(label: string, text: string) {
     await this.click('.settings label', label)
@@ -283,19 +307,51 @@ const scenarios: Scenario[] = [
       const error = await ui.page.run<string>(`return document.querySelector('section p.error')?.textContent ?? ''`)
       assert.match(error, /保護（暗号化）のかかった PDF/)
 
-      // 表1と表4を別のページにした表紙は、大きさを誤って「合わない」としない
-      await ui.choose('ファイル', '表紙')
+      // 表1と表4を別のページにした表紙は縦長なので、まず本文と見なされる。結果の欄で表紙に直すと、
+      // 大きさを誤って「合わない」とせず、別のページにした表紙として扱う
       await ui.chooseFiles([ui.file('cover-2p.pdf', pdfOf([{ w: 154, h: 216 }, { w: 154, h: 216 }]))])
       await ui.waitForResult()
+      assert.equal((await ui.sections())[0].part, '本文')
+      await ui.setPart('cover-2p.pdf', '表紙')
       assert.deepEqual((await ui.findings()).map((f) => f.title), ['表1と表4を別のページにした表紙とみなしました'])
 
       // 埋め込みのない日本語フォントのページも、CSP のもとで（CMap をスクリプトとして読んで）描ける
-      await ui.choose('ファイル', '本文')
       await ui.chooseFiles([ui.file('cjk.pdf', cjkPdf())])
       await ui.waitForResult()
       const pages = await ui.openPages('MS-Mincho')
       assert.equal(pages.failed, 0)
       assert.ok(pages.inked[0] > 50, `日本語の文字が描かれている（${pages.inked[0]} 画素）`)
+      assert.deepEqual(await ui.violations(), [])
+    },
+  },
+  {
+    name: '本文と表紙を一緒に入れると、ファイルごとに見分けて確かめる（見開きの本文も見分ける）',
+    async run(ui) {
+      await ui.open()
+      await ui.choose('印刷所', '緑陽社')
+      // 本文（A5 単ページ 4 枚）・見開きで書き出した本文・表紙（A5 上質90kg 100 ページ = 背幅 6.7mm）
+      const body = pdfOf([1, 2, 3, 4].map(() => ({ w: 154, h: 216 })))
+      const spread = pdfOf([1, 2].map(() => ({ w: 302, h: 216 })))
+      const cover = pdfOf([{ w: 148 * 2 + 6.7 + 6, h: 216 }])
+      await ui.chooseFiles([ui.file('honbun.pdf', body), ui.file('mihiraki.pdf', spread), ui.file('hyoushi.pdf', cover)])
+      await ui.waitForResult()
+      // 表紙のファイルがあるので、表紙の欄が出る。用紙とページ数を入れると背幅を計算して確かめる
+      await ui.choose('本文の用紙', '上質90kg')
+      await ui.type('本文のページ数', '100')
+      const s = await ui.sections()
+      assert.deepEqual(
+        s.map((x) => [x.name, x.part]),
+        [
+          ['honbun.pdf', '本文'],
+          ['mihiraki.pdf', '本文'],
+          ['hyoushi.pdf', '表紙'],
+        ],
+      )
+      // 本文は大きさの指摘なし、見開きは見開きとして伝え（大きさの不一致にはしない）、表紙は背幅が合っている
+      assert.ok(!s[0].titles.some((t) => /大きさ|塗り足し/.test(t)), s[0].titles.join(' / '))
+      assert.ok(s[1].titles.includes('見開きで書き出されたページがあります'))
+      assert.ok(!s[1].titles.some((t) => t.includes('用紙の大きさ')))
+      assert.ok(!s[2].titles.some((t) => /背幅|大きさ/.test(t)), s[2].titles.join(' / '))
       assert.deepEqual(await ui.violations(), [])
     },
   },

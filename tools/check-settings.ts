@@ -1,7 +1,9 @@
-// 画面の設定の引き継ぎ方と、ページ範囲の表示を確かめる（画面の部品から切り出した、DOM に依存しない部分）
+// 画面の設定の引き継ぎ方、本文か表紙かの見当の付け方、ページ範囲の表示を確かめる（画面の部品から切り出した、DOM に依存しない部分）
 import assert from 'node:assert/strict'
 import { initialSettings, printerOf, sampleSettings, withPrinter } from '../src/settings.ts'
 import { pageRanges } from '../src/ui/format.ts'
+import { guessPart, splitRasterParts } from '../src/check/part.ts'
+import type { PageFacts } from '../src/pdf/inspect.ts'
 
 assert.equal(pageRanges([5, 1, 2, 3]), '1〜3, 5')
 assert.equal(pageRanges([7]), '7')
@@ -22,10 +24,35 @@ assert.equal(pageRanges([]), '')
   // 手入力の背幅は印刷所が変わると意味が変わるので消す
   assert.equal(withPrinter({ ...s, spineMm: 6.3 }, 'popls').spineMm, undefined)
 
-  // 見本: 表紙は本文 100 ページ・上質90kg の想定。表紙を開いたあとに本文の見本を開いても、表紙の設定は残るだけで害はない
+  // 見本: 表紙は本文 100 ページ・上質90kg の想定（本文か表紙かはファイルごとに持つので、設定には入らない）
   const cover = sampleSettings({ ...s, spineMm: 5, formatId: 'B5' }, 'cover')
-  assert.deepEqual([cover.part, cover.formatId, cover.bodyPages, cover.paperId, cover.spineMm], ['cover', 'A5', 100, 'jouhou90', undefined])
-  assert.equal(sampleSettings(cover, 'body').part, 'body')
+  assert.deepEqual([cover.formatId, cover.bodyPages, cover.paperId, cover.spineMm], ['A5', 100, 'jouhou90', undefined])
+  assert.equal(sampleSettings({ ...s, formatId: 'B5' }, 'body').formatId, 'A5')
+}
+
+// --- 本文か表紙かの見当 ---
+{
+  const P = 72 / 25.4
+  const page = (n: number, wMm: number, hMm: number, rotate = 0): PageFacts => {
+    const b = { x0: 0, y0: 0, x1: wMm * P, y1: hMm * P }
+    return { number: n, mediaBox: b, cropBox: b, rotate, fonts: [], images: [], rgbPaintOps: 0, spotColors: [], unreadable: [] }
+  }
+  assert.equal(guessPart([page(1, 308.7, 216)]), 'cover', '横長の1ページは表紙')
+  assert.equal(guessPart([page(1, 154, 216)]), 'body')
+  assert.equal(guessPart([page(1, 216, 308.7, 90)]), 'cover', '回転して横長に見えるページも表紙')
+  assert.equal(guessPart([page(1, 154, 216), page(2, 154, 216)]), 'body', '表1と表4を別にした表紙は縦長なので本文と見なす（利用者が直す）')
+  assert.equal(guessPart([1, 2].map((n) => page(n, 302, 216))), 'body', '見開きの本文は2ページ以上あるので本文')
+
+  const raster = (name: string, w: number, h: number) => ({ name, meta: { format: 'png' as const, pxWidth: w, pxHeight: h, color: 'gray' as const, bitDepth: 8, alpha: false, icc: false } })
+  const groups = splitRasterParts([raster('cover.png', 4300, 3000), raster('1.png', 2122, 2976), raster('2.png', 2122, 2976)])
+  assert.deepEqual(groups.map((g) => [g.part, g.files.map((f) => f.name)]), [
+    ['body', ['1.png', '2.png']],
+    ['cover', ['cover.png']],
+  ])
+  assert.deepEqual(splitRasterParts([raster('1.png', 2122, 2976)]).map((g) => g.part), ['body'])
+  assert.deepEqual(splitRasterParts([raster('cover.png', 4300, 3000)]).map((g) => g.part), ['cover'])
+  // 横長が2枚以上なら見開きの本文かもしれないので、分けずに本文とする
+  assert.deepEqual(splitRasterParts([raster('1.png', 4244, 2976), raster('2.png', 4244, 2976), raster('3.png', 2122, 2976)]).map((g) => [g.part, g.files.length]), [['body', 3]])
 }
 
 console.log('check:settings ok')

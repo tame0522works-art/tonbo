@@ -57,11 +57,11 @@ export default function App() {
         <p>同人誌の入稿データを、印刷所の仕様に照らして確かめます。ファイルはこの端末の外に送りません。</p>
       </header>
 
-      <SettingsPanel settings={settings} onChange={setSettings} />
+      <SettingsPanel settings={settings} showCover={loaded.some((l) => l.kind !== 'error' && l.part === 'cover')} onChange={setSettings} />
 
       <label className="drop">
         PDF、または PNG・JPEG の画像をここにドロップ、または選ぶ
-        <span className="drop-note">画像はまとめて入れると、ファイル名の順に1冊として確かめます</span>
+        <span className="drop-note">本文と表紙を一緒に入れると、ページの形からどちらかを見分けます。画像はまとめて入れると、ファイル名の順に1冊として確かめます</span>
         <input type="file" accept="application/pdf,image/png,image/jpeg" multiple onChange={(e) => void open(e.target.files)} />
       </label>
       <p className="sample">
@@ -80,8 +80,13 @@ export default function App() {
           {progress}
         </p>
       )}
-      {loaded.map((l) => (
-        <Result key={l.fileName} l={l} settings={settings} />
+      {loaded.map((l, i) => (
+        <Result
+          key={l.fileName}
+          l={l}
+          settings={settings}
+          onPartChange={(part) => setLoaded((all) => all.map((x, j) => (j === i && x.kind !== 'error' ? { ...x, part } : x)))}
+        />
       ))}
 
       <footer>

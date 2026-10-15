@@ -4,6 +4,7 @@
  * 読み込み中に別のファイルが入れられたら、呼び出し側が isStale で知らせ、ここでは途中でやめる。
  */
 import type { TextItem } from './check/nombre.ts'
+import { guessPart, splitRasterParts, type Part } from './check/part.ts'
 import { extractTexts } from './check/text.ts'
 import { PdfEncryptedError } from './pdf/document.ts'
 import { inspectPdf, type DocumentFacts } from './pdf/inspect.ts'
@@ -11,10 +12,11 @@ import { openImagePreview, openPdfPreview, type Preview } from './preview.ts'
 import { sortByName, type RasterFile } from './raster/facts.ts'
 import { inspectRaster } from './raster/inspect.ts'
 
+/** part は本文か表紙か。ページの形から見当を付け、利用者が結果の欄で直せる */
 export type Loaded =
-  | { kind: 'pdf'; fileName: string; facts: DocumentFacts; preview: Preview; texts?: TextItem[][] }
+  | { kind: 'pdf'; fileName: string; part: Part; facts: DocumentFacts; preview: Preview; texts?: TextItem[][] }
   /** 画像原稿はまとめて1冊として扱う。大きさは判型や背幅の選び方で変わるので、検査のたびに求める */
-  | { kind: 'images'; fileName: string; files: RasterFile[]; preview: Preview }
+  | { kind: 'images'; fileName: string; part: Part; files: RasterFile[]; preview: Preview }
   | { kind: 'error'; fileName: string; error: string }
 
 export type InputFile = { name: string; type?: string; arrayBuffer: () => Promise<ArrayBuffer> }
@@ -65,16 +67,18 @@ export async function loadFiles(files: InputFile[], onProgress: (text: string) =
         preview.close()
         return null
       }
-      results.push({ kind: 'pdf', fileName: f.name, facts, preview, texts })
+      results.push({ kind: 'pdf', fileName: f.name, part: guessPart(facts.pages), facts, preview, texts })
     } catch (e) {
       if (isStale()) return null
       results.push({ kind: 'error', fileName: f.name, error: errorMessage(e) })
     }
   }
-  if (images.length) {
-    const sorted = sortByName(images)
+  // 横長の画像（表紙）と縦長の画像（本文）が混ざっていれば、別の冊として分ける
+  const groups = images.length ? splitRasterParts(images) : []
+  for (const { part, files: group } of groups.reverse()) {
+    const sorted = sortByName(group)
     const name = sorted.length === 1 ? sorted[0].name : `${sorted[0].name} 〜 ${sorted[sorted.length - 1].name}（${sorted.length} 枚）`
-    results.unshift({ kind: 'images', fileName: name, files: sorted.map(({ name: n, meta }) => ({ name: n, meta })), preview: openImagePreview(sorted) })
+    results.unshift({ kind: 'images', fileName: name, part, files: sorted.map(({ name: n, meta }) => ({ name: n, meta })), preview: openImagePreview(sorted) })
   }
   return results
 }

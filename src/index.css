@@ -317,3 +317,20 @@ summary {
     animation: none;
   }
 }
+.part {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.part select {
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+}

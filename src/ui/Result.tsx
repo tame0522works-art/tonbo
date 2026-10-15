@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { Part } from '../check/part.ts'
 import { checkDocument } from '../check/rules.ts'
 import type { Loaded } from '../load.ts'
 import { boxHeightMm, boxWidthMm, type PageFacts } from '../pdf/inspect.ts'
@@ -28,10 +29,11 @@ function PageRow({ p, name }: { p: PageFacts; name?: string }) {
 }
 
 /** 1ファイル（画像原稿はまとめて1冊）の検査結果。設定が変わるたびに判定し直す */
-export function Result({ l, settings }: { l: Loaded; settings: Settings }) {
+export function Result({ l, settings, onPartChange }: { l: Loaded; settings: Settings; onPartChange: (part: Part) => void }) {
   const printer = printerOf(settings)
   const checked = useMemo(() => {
-    const opts = { ...settings, printer }
+    if (l.kind === 'error') return undefined
+    const opts = { ...settings, printer, part: l.part }
     if (l.kind === 'pdf') return { facts: l.facts, findings: checkDocument(l.facts, opts, l.texts) }
     if (l.kind === 'images') return checkRasters(l.files, opts)
     return undefined
@@ -50,6 +52,14 @@ export function Result({ l, settings }: { l: Loaded; settings: Settings }) {
   return (
     <section>
       <h2>{l.fileName}</h2>
+      <label className="part">
+        このファイルを
+        <select value={l.part} onChange={(e) => onPartChange(e.target.value as Part)}>
+          <option value="body">本文</option>
+          <option value="cover">表紙</option>
+        </select>
+        として確かめています
+      </label>
       <p className="meta">
         {l.kind === 'pdf'
           ? `PDF ${facts.version}・${facts.pages.length} ページ${facts.pdfx ? `・${facts.pdfx}` : ''}`

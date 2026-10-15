@@ -3,7 +3,8 @@ import { printerOf, withPrinter, type Settings } from '../settings.ts'
 import { PRINTERS } from '../specs/index.ts'
 
 /** 印刷所・判型・本文か表紙か などの設定欄と、背幅・判型の注記 */
-export function SettingsPanel({ settings, onChange }: { settings: Settings; onChange: (s: Settings) => void }) {
+/** showCover: 表紙として確かめるファイルがあるときだけ、表紙の欄（用紙・ページ数・背幅）を出す */
+export function SettingsPanel({ settings, showCover, onChange }: { settings: Settings; showCover: boolean; onChange: (s: Settings) => void }) {
   const printer = printerOf(settings)
   const spineCalc = computeSpine(printer, settings.paperId, settings.bodyPages)
   const set = (patch: Partial<Settings>) => onChange({ ...settings, ...patch })
@@ -32,31 +33,20 @@ export function SettingsPanel({ settings, onChange }: { settings: Settings; onCh
           </select>
         </label>
         <label>
-          ファイル
-          <select value={settings.part} onChange={(e) => set({ part: e.target.value as Settings['part'] })}>
-            <option value="body">本文</option>
-            <option value="cover">表紙</option>
-          </select>
-        </label>
-        {settings.part === 'body' && (
-          <>
-            <label>
-              刷り色
+          本文の刷り色
               <select value={settings.ink} onChange={(e) => set({ ink: e.target.value as Settings['ink'] })}>
                 <option value="mono">モノクロ</option>
                 <option value="color">カラー</option>
               </select>
-            </label>
-            <label>
-              とじ方
-              <select value={settings.binding} onChange={(e) => set({ binding: e.target.value as Settings['binding'] })}>
-                <option value="perfect">無線とじ（平とじ）</option>
-                <option value="saddle">中とじ</option>
-              </select>
-            </label>
-          </>
-        )}
-        {settings.part === 'cover' && (
+        </label>
+        <label>
+          とじ方
+          <select value={settings.binding} onChange={(e) => set({ binding: e.target.value as Settings['binding'] })}>
+            <option value="perfect">無線とじ（平とじ）</option>
+            <option value="saddle">中とじ</option>
+          </select>
+        </label>
+        {showCover && (
           <>
             {printer.spine.value.papers.length > 0 && (
               <label>
@@ -95,7 +85,7 @@ export function SettingsPanel({ settings, onChange }: { settings: Settings; onCh
           </>
         )}
       </fieldset>
-      {settings.part === 'cover' && (
+      {showCover && (
         <p className="meta">
           {settings.spineMm !== undefined
             ? `入力した背幅 ${settings.spineMm}mm で確かめます。`

@@ -1,16 +1,17 @@
-// 画面の設定（印刷所・判型・本文か表紙か など）と、その引き継ぎ方
+// 画面の設定（印刷所・判型・刷り色・とじ方・表紙の用紙など）と、その引き継ぎ方
 import type { CheckOptions } from './check/rules.ts'
 import { PRINTERS } from './specs/index.ts'
 import type { PrinterSpec } from './specs/types.ts'
 
-export type Settings = Omit<CheckOptions, 'printer'> & { printerId: string }
+/** 本文か表紙か（part）はファイルごとに持つので、設定には含めない */
+export type Settings = Omit<CheckOptions, 'printer' | 'part'> & { printerId: string }
 
 export function printerOf(s: Settings): PrinterSpec {
   return PRINTERS.find((p) => p.id === s.printerId)!
 }
 
 export function initialSettings(): Settings {
-  return { printerId: PRINTERS[0].id, formatId: 'A5', part: 'body', ink: 'mono', binding: 'perfect', paperId: PRINTERS[0].spine.value.papers[0]?.id }
+  return { printerId: PRINTERS[0].id, formatId: 'A5', ink: 'mono', binding: 'perfect', paperId: PRINTERS[0].spine.value.papers[0]?.id }
 }
 
 /** 印刷所を変える。判型と用紙は、同じものが新しい印刷所にもあれば引き継ぐ */
@@ -28,7 +29,7 @@ export function withPrinter(s: Settings, printerId: string): Settings {
  */
 export function sampleSettings(s: Settings, part: 'body' | 'cover'): Settings {
   const printer = printerOf(s)
-  const next: Settings = { ...s, part, formatId: printer.formats.some((f) => f.id === 'A5') ? 'A5' : s.formatId }
+  const next: Settings = { ...s, formatId: printer.formats.some((f) => f.id === 'A5') ? 'A5' : s.formatId }
   if (part === 'cover') {
     next.bodyPages = 100
     next.paperId = printer.spine.value.papers.find((x) => x.id === 'jouhou90')?.id ?? s.paperId
