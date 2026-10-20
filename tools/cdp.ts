@@ -1,5 +1,5 @@
 // Edge / Chrome を画面なしで起動し、Chrome DevTools Protocol で操作するための最小限の道具。
-// README の画像を撮る screenshots.ts で使う（fuda の tools/cdp.ts と同じもの）。
+// 画面テスト（e2e.ts）と README の画像（screenshots.ts）で使う（hikage・tonbo・fuda の tools/cdp.ts は同じもの）。
 import { spawn } from 'node:child_process'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -112,7 +112,7 @@ export class Browser {
   static async launch(port = 9333): Promise<Browser> {
     const exe = BROWSERS.find((p) => existsSync(p))
     if (!exe) throw new Error('Edge か Chrome が見つかりません')
-    const profile = mkdtempSync(join(tmpdir(), 'tonbo-browser-'))
+    const profile = mkdtempSync(join(tmpdir(), 'cdp-browser-'))
     const args = [
       '--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`,
       '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--disable-gpu',
@@ -121,7 +121,12 @@ export class Browser {
       'about:blank',
     ]
     // ブラウザが標準エラーに書いたことの最後の部分を取っておき、つながらなかったときに見せる
-    const child = spawn(exe, args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    // Windows は、互換性を調べる印（__COMPAT_LAYER=DetectorsAppHealth など）を付けて起動されたアプリの子にも、
+    // その印を環境変数で引き継ぐ。Edge は印を見ると、印を外した自分を起動し直し、最初のプロセスは終了コード 0 ですぐ終わる。
+    // 起動し直した本体はこちらから閉じられずに残り、ポートもふさいで次の起動を失敗させるので、初めから印を外して起動する
+    const env = { ...process.env }
+    delete env.__COMPAT_LAYER
+    const child = spawn(exe, args, { stdio: ['ignore', 'ignore', 'pipe'], env })
     let stderr = ''
     child.stderr!.on('data', (d: Buffer) => {
       stderr = (stderr + d.toString()).slice(-4000)
